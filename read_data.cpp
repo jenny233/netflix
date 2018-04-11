@@ -24,36 +24,22 @@ int main()
 		}
 	}
 
-	map<int, vector<int>> users;
+	map<int, double> users;
 	for (int i = 0; i < SIZE; i++)
 	{
 		int user = rating_matrix[i][0];
 
 		if (users.find(user) == users.end())
 		{
-			vector<int> movie;
-			movie.push_back(rating_matrix[i][3]);
-			users[user] = movie;
+			
+			users[user] = (double) rating_matrix[i][3];
 		}
 		else
 		{
-			vector<int> movies;
-			movies = users[user];
-			movies.push_back(rating_matrix[i][3]);
-			users[user] = movies;
-
+			double temp = users[user];
+			users[user] = ((double)rating_matrix[i][3] + temp) / 2.0;
 		}
 	}
-
-
-	for (map<int, vector<int> >::iterator ii = users.begin(); ii != users.end(); ++ii) {
-		cout << (*ii).first << ": ";
-		vector <int> inVect = (*ii).second;
-		for (unsigned j = 0; j<inVect.size(); j++) {
-			cout << inVect[j] << " ";
-		}
-		cout << endl;
-	}
-	cout << "Map size: " << users.size() << endl;
+	
 	return 0;
 }
