@@ -5,7 +5,7 @@ using namespace std;
 int main()
 {
 	ifstream inFile;
-    inFile.open("mu/all.dta");
+    inFile.open("../mu/all.dta");
 	if (!inFile) {
 		cout << "File not opened." << endl;
 		exit(1);
@@ -21,7 +21,7 @@ int main()
 		}
     }
 	inFile.close();
-	
+
 	for (int i=0; i<10; i++) {
 		for (int j=0; j<4; j++) {
 			cout << rating_matrix[i][j] << " ";
