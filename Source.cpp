@@ -2,8 +2,12 @@
 #include <fstream>
 #include <map>
 #include <vector>
+#include <algorithm>
+#include <cstdlib>
 #define USER_SIZE  500000
 #define MOVIE_SIZE  5000
+#define EPOCH  5000
+
 using namespace std;
 
 vector<int>* adj_user = new vector<int>[USER_SIZE];
@@ -111,25 +115,23 @@ double sum_bias(double arr[], int* rating_matrix[], char type)
 	return total;
 }
 
-double SVG_bias_u(double u_bias[], double m_bias[], int* rating_matrix[], double lamdba, double avg, int rating_index)
+double SGD_bias_u(double u_bias[], double m_bias[], int* rating_matrix[], double lamdba, double avg, int rating_index)
 {
-	double gradient  = 0.0;
-	double learning_rate = 0.1;
-	for (int i = 0; i < USER_SIZE; i++)
-	{
-		gradient += -2.0 * (rating_matrix[i][3] - avg - u_bias[rating_matrix[i][0]] - m_bias[rating_matrix[i][2]]) + lamdba * 2.0 * sum_bias(u_bias, rating_matrix, 'u');
-	}
+	double gradient = 0.0;
+	double learning_rate = 0.01;
+	// int random;
+	// Draw random sample from the training set by shuffling the array elements
+	// random_shuffle(begin(rating_matrix), end(random_matrix));
+
+	gradient = -2.0 * (rating_matrix[rating_index][3] - avg - u_bias[rating_matrix[rating_index][0]] - m_bias[rating_matrix[rating_index][2]]) + lamdba * 2.0 * u_bias[rating_matrix[rating_index][0]];
 	u_bias[rating_matrix[rating_index][0]] -= learning_rate * gradient;
 	return u_bias[rating_matrix[rating_index][0]];
 }
-double SVG_bias_m(double u_bias[], double m_bias[], int* rating_matrix[], double lamdba, double avg, int rating_index)
+double SGD_bias_m(double u_bias[], double m_bias[], int* rating_matrix[], double lamdba, double avg, int rating_index)
 {
 	double gradient = 0.0;
-	double learning_rate = 0.1;
-	for (int i = 0; i < USER_SIZE; i++)
-	{
-		gradient += -2.0 * (rating_matrix[i][3] - avg - u_bias[rating_matrix[i][0]] - m_bias[rating_matrix[i][2]]) + lamdba * 2.0 * sum_bias(m_bias, rating_matrix, 'm');
-	}
+	double learning_rate = 0.01;
+	gradient = -2.0 * (rating_matrix[rating_index][3] - avg - u_bias[rating_matrix[rating_index][0]] - m_bias[rating_matrix[rating_index][2]]) + lamdba * 2.0 * m_bias[rating_matrix[rating_index][2]];
 	m_bias[rating_matrix[rating_index][2]] -= learning_rate * gradient;
 	return m_bias[rating_matrix[rating_index][2]];
 }
@@ -137,12 +139,12 @@ double SVG_bias_m(double u_bias[], double m_bias[], int* rating_matrix[], double
 void gradient_descent_bias(double u_bias[], double m_bias[], int* rating_matrix[], double lamdba, double avg)
 {
 	double error;
-	for (int i = 0; i < 10; i++)
+	for (int i = 0; i < EPOCH; i++)
 	{
 		for (int j = 0; j < USER_SIZE; j++)
 		{
-			u_bias[rating_matrix[j][0]] = SVG_bias_u(u_bias, m_bias, rating_matrix, lamdba, avg, j);
-			m_bias[rating_matrix[j][2]] = SVG_bias_m(u_bias, m_bias, rating_matrix, lamdba, avg, j);
+			u_bias[rating_matrix[j][0]] = SGD_bias_u(u_bias, m_bias, rating_matrix, lamdba, avg, j);
+			m_bias[rating_matrix[j][2]] = SGD_bias_m(u_bias, m_bias, rating_matrix, lamdba, avg, j);
 		}
 		cout << "Iteration " << i << endl;
 	}
@@ -163,7 +165,7 @@ void checkpoint(double u_bias[], double m_bias[])
 		outputFile << u_bias[i] << endl;
 
 	}
-	outputFile << "movie_bias:" << endl<<endl;
+	outputFile << "movie_bias:" << endl << endl;
 	for (int i = 0; i < MOVIE_SIZE; i++)
 	{
 		outputFile << m_bias[i] << endl;
@@ -200,7 +202,7 @@ int main()
 
 	double total_average_movie_rating = 0;
 	for (int i = 0; i < USER_SIZE; i++) {
-		for (int j = 0; j<4; j++) {
+		for (int j = 0; j < 4; j++) {
 			inFile >> rating_matrix[i][j];
 		}
 		total_average_movie_rating += (double)rating_matrix[i][3];
@@ -216,8 +218,8 @@ int main()
 	/*
 	for (int i = 0; i < USER_SIZE; ++i)
 	{
-		error1 += pow((double)rating_matrix[i][3] - baseline_pred(rating_matrix[i][0], rating_matrix[i][2]), 2.0);
-		error2 += pow((double)rating_matrix[i][3] - baseline_pred_better(rating_matrix[i][0], rating_matrix[i][2], total_average_movie_rating), 2.0);
+	error1 += pow((double)rating_matrix[i][3] - baseline_pred(rating_matrix[i][0], rating_matrix[i][2]), 2.0);
+	error2 += pow((double)rating_matrix[i][3] - baseline_pred_better(rating_matrix[i][0], rating_matrix[i][2], total_average_movie_rating), 2.0);
 	}
 	cout << error1 << endl;
 	cout << error2 << endl;
@@ -251,9 +253,9 @@ int main()
 		else
 			bias_movie[rating_matrix[i][2]] = bias[1];
 	}
-	checkpoint(bias_user,bias_movie);
+	checkpoint(bias_user, bias_movie);
 	cout << "goodluck" << endl;
-	gradient_descent_bias(bias_user, bias_movie,  rating_matrix,  10, total_average_movie_rating);
+	gradient_descent_bias(bias_user, bias_movie, rating_matrix, .1, total_average_movie_rating);
 	checkpoint(bias_user, bias_movie);
 	std::cout << num_of_unique_movie << endl;
 	std::cin.get();
