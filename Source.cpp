@@ -10,6 +10,8 @@
 
 #include <cstdlib>
 
+#include <cmath>
+
 #define USER_SIZE  500000
 
 #define MOVIE_SIZE  5000
@@ -190,7 +192,9 @@ vector<double> find_bias(int user, int movie, double avg)
 
 	b_u = total2 / (lamdba2 + ((adj_user[user]).size()));
 
-	vector <double> bias = { b_i, b_u };
+	vector <double> bias;
+	bias.push_back(b_i);
+	bias.push_back(b_u);
 
 	return bias;
 
@@ -286,7 +290,7 @@ void checkpoint(double u_bias[], double m_bias[])
 
 	outputFile.open("bias_checkpoint.txt");
 
-	outputFile << "movie_bias:" << endl;
+	outputFile << "user_bias:" << endl;
 
 	for (int i = 0; i < USER_SIZE; i++)
 
@@ -332,7 +336,7 @@ void gradient_descent_bias(double u_bias[], double m_bias[], int* rating_matrix[
 		if (counter % 1000 == 0 )
 			cout << "Iteration " << counter << endl;
 		new_error = calc_error(u_bias, m_bias, rating_matrix, avg);
-		cout << new_error << endl;
+		// cout << new_error << endl;
 		counter += 1;
 	}
 	cout << counter<<endl;
@@ -352,16 +356,18 @@ int main()
 	for (int i = 0; i < USER_SIZE; i++)
 
 	{
-
-		adj_user[i] = { 0 };
+		vector <int> m;
+		m.push_back(0);
+		adj_user[i] = m;
 
 	}
 
 	for (int i = 0; i < MOVIE_SIZE; i++)
 
 	{
-
-		adj_movie[i] = { 0 };
+		vector <int> m;
+		m.push_back(0);
+		adj_movie[i] = m;
 
 	}
 
@@ -369,7 +375,7 @@ int main()
 
 	ifstream inFile;
 
-	inFile.open("all.dta");
+	inFile.open("../mu/all.dta");
 
 	if (!inFile) {
 
@@ -454,16 +460,14 @@ int main()
 	for (int i = 0; i < USER_SIZE; i++)
 
 	{
-
-		bias_user[i] = { 0 };
+		bias_user[i] = 0.0;
 
 	}
 
 	for (int i = 0; i < MOVIE_SIZE; i++)
 
 	{
-
-		bias_movie[i] = { 0 };
+		bias_movie[i] = 0.0;
 
 	}
 
@@ -507,7 +511,7 @@ int main()
 
 	checkpoint(bias_user, bias_movie);
 
-	cout << "goodluck" << endl;
+	// cout << "goodluck" << endl;
 
 	gradient_descent_bias(bias_user, bias_movie, rating_matrix, .1, total_average_movie_rating);
 
