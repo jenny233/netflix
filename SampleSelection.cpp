@@ -3,9 +3,6 @@
 #include <string>
 #include <vector>
 #include <algorithm>    // std::shuffle
-#include <array>        // std::array
-#include <random>       // std::default_random_engine
-#include <chrono>       // std::chrono::system_clock
 
 #define TRAIN_SIZE  500000
 #define DATASET_NUM  1  // The dataset that we want to select
