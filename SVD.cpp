@@ -1,26 +1,4 @@
-#include <iostream>
-#include <fstream>
-#include <map>
-#include <vector>
-#include <algorithm>
-#include <cstdlib>
-#include <cmath>
-#include <Eigen/Dense>
-
-#define TRAIN_SIZE  500000
-#define USER_SIZE  458294
-#define MOVIE_SIZE  17771
-#define EPOCH  300
-
-using namespace std;
-using namespace Eigen;
-
-
-struct ans {
-    MatrixXd U;
-    MatrixXd V;
-    float error;
-} ;
+#include "SVD.hpp"
 
 // Four arrays to store all the data read in
 int* user_matrix = new int[TRAIN_SIZE];
@@ -55,7 +33,7 @@ VectorXd grad_V(VectorXd Vj, float Yij, VectorXd Ui, float reg, float eta) {
 
 float get_err(MatrixXd U, MatrixXd V,
               int* user_matrix, short* movie_matrix,
-              short* date_matrix, char* rating_matrix, float reg=0.0) {
+              short* date_matrix, char* rating_matrix, float reg) {
     /*
     Takes as input a matrix Y of triples (i, j, Y_ij) where i is the index of a user,
     j is the index of a movie, and Y_ij is user i's rating of movie j and
@@ -89,10 +67,10 @@ float get_err(MatrixXd U, MatrixXd V,
 }
 
 
-ans train_model(int M, int N, int K, float eta, float reg,
+svd_ans train_model(int M, int N, int K, float eta, float reg,
                 int* user_matrix, short* movie_matrix,
                 short* date_matrix, char* rating_matrix,
-                float eps=0.0001, int max_epochs=EPOCH) {
+                float eps, int max_epochs) {
     /*
     Given a training data matrix Y containing rows (i, j, Y_ij)
     where Y_ij is user i's rating on movie j, learns an
@@ -159,7 +137,7 @@ ans train_model(int M, int N, int K, float eta, float reg,
     cout << V.block<5,5>(0, 0) << endl;
 
 
-    ans result = {U, V, get_err(U, V, user_matrix, movie_matrix,
+    svd_ans result = {U, V, get_err(U, V, user_matrix, movie_matrix,
                                 date_matrix, rating_matrix)};
     return result;
 }
@@ -185,7 +163,7 @@ int main() {
     inFile.close();
 
     cout << "Training model." << endl;
-    ans result = train_model(USER_SIZE, MOVIE_SIZE, 5, 0.03, 0.0,
+    svd_ans result = train_model(USER_SIZE, MOVIE_SIZE, 5, 0.03, 0.0,
                              user_matrix, movie_matrix,
                              date_matrix, rating_matrix);
 
