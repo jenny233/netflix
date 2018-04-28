@@ -93,13 +93,12 @@ private:
 	//void outputRMSE(short numFeats);
 	stringstream mdata;
 
-	float movieAvg[NUM_MOVIES];
+	float movieAvg[NUM_MOVIES]; // average movie rating
 public:
 	KNN();
 	~KNN() { };
 	void loadData();
 	void calcP();
-	//inline float getP(short i, short j);
 };
 
 KNN::KNN()
@@ -109,6 +108,8 @@ KNN::KNN()
 
 void KNN::loadData()
 {
+	// um, mu - userId, movieId, rating
+	// movieAvg array - average rating for each movie
 }
 
 void KNN::calcP() {
@@ -210,7 +211,7 @@ void KNN::calcP() {
 				P[i][z].common = n;
 			}
 		}
-		cout << P[i][z].p << endl;
+		//cout << P[i][z].p << endl;
 	}
 	cout << "P calculated" << endl;
 	
@@ -218,8 +219,69 @@ void KNN::calcP() {
 
 double KNN::predictRating(unsigned int movie, unsigned int user) {
 
-	
+	double prediction = 0;
+	double denom = 0;
+	double diff;
+	double result;
 
+	unsigned int size, i, n;
+
+	s_pear tmp;
+	s_neighbors neighbors[NUM_MOVIES];
+	priority_queue<s_neighbors> q;
+	s_neighbors tmp_pair;
+	float p_lower, pearson;
+	int common_users;
+
+	// Len neighbors
+	int j = 0;
+
+	// For each movie rated by user
+	size = um[user].size();
+
+	for (i = 0; i < size; i++) {
+		n = um[user][i].movie; // n: movie watched by user
+
+		tmp = P[min(movie, n)][max(movie, n)];
+		common_users = tmp.common;
+
+		// If movie and m2 have >= MIN_COMMON viewers
+		if (common_users >= MIN_COMMON) {
+			neighbors[j].common = common_users;
+			neighbors[j].m_avg = movieAvg[movie];
+			neighbors[j].n_avg = movieAvg[n];
+
+			neighbors[j].n_rating = um[user][i].rating;
+
+			pearson = tmp.p;
+			neighbors[j].pearson = pearson;
+
+			// Fisher and inverse-fisher transform (from wikipedia)
+			p_lower = tanh(atanh(pearson) - 1.96 / sqrt(common_users - 3));
+			//p_lower = pearson;
+			neighbors[j].p_lower = p_lower;
+			neighbors[j].weight = p_lower * p_lower * log(common_users);
+			j++;
+		}
+
+	}
+
+	// Add the dummy element described in the blog
+	neighbors[j].common = 0;
+	neighbors[j].m_avg = movieAvg[movie];
+	neighbors[j].n_avg = 0;
+
+	neighbors[j].n_rating = 0;
+
+	neighbors[j].pearson = 0;
+
+	neighbors[j].p_lower = 0;
+	neighbors[j].weight = log(MIN_COMMON);
+	j++;
+	
+	result = ((float)prediction) / denom;
+
+	return result;
 }
 
 
