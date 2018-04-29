@@ -18,8 +18,8 @@
 #define MOVIE_SIZE 17701
 #define DO_SHUFFLE true  // true: time seeded shuffle, false: no shuffling
 
-#define DATASET_NUM  1  // The dataset that we want to select
-#define OUTFILE_NAME "dataset1_shuffled_all.dta"
+#define DATASET_NUM  2  // The dataset that we want to select
+#define OUTFILE_NAME "dataset2_shuffled_all.dta"
 
 
 
@@ -47,7 +47,7 @@ int main () {
 		}
 
 		if (count % 1000000 == 0) {
-			cout << "\r" << to_string(count * 100 / 102416306) << "%%" << flush;
+			cout << "\r" << to_string(count * 100 / READ_IN_LINES) << "%%" << flush;
 		}
 
 		count++;
@@ -77,13 +77,17 @@ int main () {
 	short* movie_matrix = new short[READ_IN_LINES];
 	short* rating_matrix = new short[READ_IN_LINES];
 	short*  time_matrix = new short[READ_IN_LINES];
-	for (int i = 0; i < READ_IN_LINES; i++) {
+	for (long i = 0; i < READ_IN_LINES; i++) {
 		inFile >> user_matrix[i];
 		inFile >> movie_matrix[i];
 		inFile >> time_matrix[i];
 		inFile >> rating_matrix[i];
+		if (i % 1000000 == 0) {
+			cout << "\r" << to_string(i * 100 / READ_IN_LINES) << "%%" << flush;
+		}
 	}
 	inFile.close();
+	cout << endl;
 
 
 
@@ -98,6 +102,10 @@ int main () {
 		<< time_matrix[list_of_indices[p]] << " "
 		<< rating_matrix[list_of_indices[p]] << endl;
 
+		if (user_matrix[list_of_indices[p]] <= 0) {
+			cout << "THIS LINE IS WRONG!!!" << endl;
+			cout << "p: " << p << " line: " << list_of_indices[p] << " user: " << user_matrix[list_of_indices[p]] << endl;
+		}
 		if (p % 1000000 == 0) {
 			cout << "\r" << to_string(p * 100 / READ_IN_LINES) << "%%" << flush;
 		}
