@@ -30,7 +30,7 @@ VectorXd grad_V(VectorXd Vj, double Yij, VectorXd Ui, double reg, double eta) {
 double get_err(MatrixXd U, MatrixXd V,
               int* user_matrix, short* movie_matrix,
               short* date_matrix, char* rating_matrix,
-              int size, double reg) {
+              double size, double reg) {
     /*
     Takes as input a matrix Y of triples (i, j, Y_ij) where i is the index of a user,
     j is the index of a movie, and Y_ij is user i's rating of movie j and
@@ -59,7 +59,7 @@ double get_err(MatrixXd U, MatrixXd V,
         err += 0.5 * reg * pow(V_frobenius_norm, 2.0);
     }
     // Return the mean of the regularized error
-    return err / (double)size;
+    return err / size;
 }
 
 
@@ -88,7 +88,12 @@ svd_ans train_model(int M, int N, int K, double eta, double reg,
     MatrixXd U = MatrixXd::Random(M, K) - MatrixXd::Constant(M, K, 0.5);
     MatrixXd V = MatrixXd::Random(K, N) - MatrixXd::Constant(K, N, 0.5);
 
-    double E_in, E_val, init_E_in, init_E_val;
+    double E_in, E_val, init_E_in, init_E_val, delta;
+
+
+    // TODO: Calculate E_in only on a portion of the in data.
+    //       It takes wayyyyyy too long to go through all of the training points.
+
     init_E_in = get_err(U, V, user_matrix, movie_matrix,
                         date_matrix, rating_matrix,
                         TRAIN_SIZE, reg);
@@ -128,15 +133,15 @@ svd_ans train_model(int M, int N, int K, double eta, double reg,
                               date_matrix_val, rating_matrix_val,
                               VALID_SIZE, reg);
         cout << endl << "E_in: " << E_in << "  E_val: " << E_val << endl;
-        cout << endl;
+
 
         // Compute change in E_in for first epoch
         if (epoch == 0) {
-            delta = before_E_in - E_in;
+            delta = init_E_in - E_in;
         }
         // If E_in doesn't decrease by some fraction <eps> = 0.001
         // of the initial decrease in E_in, stop early
-        else if (before_E_in - E_in < 0.001 * delta) {
+        else if (init_E_in - E_in < 0.001 * delta) {
             break;
         }
 
@@ -178,7 +183,7 @@ int main() {
     // Read training data
     ifstream inFile;
     cout << "Reading training input." << endl;
-    inFile.open("../dataset1_random_samples_all.dta");
+    inFile.open("../dataset1_unshuffled_all.dta");
     if (!inFile) {
         std::cout << "File not opened." << endl;
         exit(1);
@@ -199,7 +204,7 @@ int main() {
 
     // Read validation data
     cout << "Reading validation input." << endl;
-    inFile.open("../dataset2_random_samples_all.dta");
+    inFile.open("../dataset2_shuffled_all.dta");
     if (!inFile) {
         std::cout << "File not opened." << endl;
         exit(1);
@@ -259,51 +264,26 @@ int main() {
     short* movie_matrix_test = new short[TEST_SIZE];
     short* date_matrix_test = new short[TEST_SIZE];
     cout << "Reading testing input." << endl;
-    inFile.open("dataset5for_testing.dta");
+    inFile.open("../dataset5_unshuffled_all.dta");
     if (!inFile) {
         cout << "File not opened." << endl;
         exit(1);
     }
-    index = 0;
-    while (index < TEST_SIZE) {
-        int u;
-        short m;
-        short d;
-        char r;
-        inFile >> u;
-		inFile >> m;
-		inFile >> d;
-		inFile >> r;
-        if (u <= 0 ||
-            m <= 0 ||
-            d <= 0
-        ) {
-            cout << index << " " << u << " " << m << " " << d << " " << r << endl;
-        } else {
-            user_matrix_test[index] = u;
-    		movie_matrix_test[index] = m;
-    		date_matrix_test[index] = d;
-            index++;
-        }
-        if (index % 1000000 == 0) {
-            cout << "\r" << to_string(index * 100 / TEST_SIZE) << "%%" << flush;
+    int garbage_zero_rating;
+    for (long i=0; i<TRAIN_SIZE; i++) {
+        inFile >> user_matrix_test[i];
+		inFile >> movie_matrix_test[i];
+		inFile >> date_matrix_test[i];
+        inFile >> garbage_zero_rating;
+        if (i % 1000000 == 0) {
+            cout << "\r" << to_string(i * 100 / TEST_SIZE) << "%%" << flush;
         }
     }
-    // int garbage_zero_rating;
-    // for (long i=0; i<TRAIN_SIZE; i++) {
-    //     inFile >> user_matrix_test[i];
-	// 	inFile >> movie_matrix_test[i];
-	// 	inFile >> date_matrix_test[i];
-    //     inFile >> garbage_zero_rating;
-    //     if (i % 1000000 == 0) {
-    //         cout << "\r" << to_string(i * 100 / TEST_SIZE) << "%%" << flush;
-    //     }
-    // }
     cout << endl;
     inFile.close();
 
     // Make predictions
-    outFile.open("testing_predictions_4_28.dta");
+    outFile.open("testing_predictions_4_29.dta");
     for (long r=0; r<TEST_SIZE; r++) {
         int i = user_matrix_test[r];
         int j = movie_matrix_test[r];
