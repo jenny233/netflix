@@ -112,10 +112,7 @@ svd_ans train_model(int M, int N, int K, double eta, double reg,
             int date = date_matrix[ind];
             int Yij = rating_matrix[ind] - '0';
             // Update U[i], V[j]
-            if (ind * 100 / TRAIN_SIZE == 77) {
-                cout << ind << " " << i << " " << j << endl
-                 << U.row(i-1) << endl << V.col(j-1) << endl << endl;
-            }
+
             U.row(i-1) = grad_U(U.row(i-1), Yij, V.col(j-1), reg, eta);
             V.col(j-1) = grad_V(V.col(j-1), Yij, U.row(i-1), reg, eta);
         }
@@ -174,18 +171,37 @@ int main() {
         std::cout << "File not opened." << endl;
         exit(1);
     }
-    for (long i=0; i<TRAIN_SIZE; i++) {
-        inFile >> user_matrix[i];
-		inFile >> movie_matrix[i];
-		inFile >> date_matrix[i];
-		inFile >> rating_matrix[i];
-        if (i % 1000000 == 0) {
-            cout << "\r" << to_string(i * 100 / TRAIN_SIZE) << "%%" << flush;
+    long index = 0;
+    while (index < TRAIN_SIZE) {
+        int u;
+        short m;
+        short d;
+        char r;
+        inFile >> u;
+		inFile >> m;
+		inFile >> d;
+		inFile >> r;
+        if (u <= 0 ||
+            m <= 0 ||
+            d <= 0 ||
+            r <= '0'
+        ) {
+            cout << index << " " << u << " " << m << " " << d << " " << r << endl;
+        } else {
+            user_matrix[index] = u;
+    		movie_matrix[index] = m;
+    		date_matrix[index] = d;
+    		rating_matrix[index] = r;
+            index++;
         }
-        if (i >= 73599333 && i <= 73599337) {
-            cout << endl << i << ": " << user_matrix[i] << " " << movie_matrix[i] << " " << date_matrix[i] << " " << rating_matrix[i] << endl;
+        if (index % 1000000 == 0) {
+            cout << "\r" << to_string(index * 100 / TRAIN_SIZE) << "%%" << flush;
         }
     }
+    // inFile >> user_matrix[i];
+    // inFile >> movie_matrix[i];
+    // inFile >> date_matrix[i];
+    // inFile >> rating_matrix[i];
     cout << endl;
     inFile.close();
 
@@ -196,25 +212,65 @@ int main() {
         std::cout << "File not opened." << endl;
         exit(1);
     }
-    for (long i=0; i<VALID_SIZE; i++) {
-        inFile >> user_matrix_val[i];
-		inFile >> movie_matrix_val[i];
-		inFile >> date_matrix_val[i];
-		inFile >> rating_matrix_val[i];
-        if (i % 100000 == 0) {
-            cout << "\r" << to_string(i * 100 / VALID_SIZE) << "%%" << flush;
+    index = 0;
+    while (index < VALID_SIZE) {
+        int u;
+        short m;
+        short d;
+        char r;
+        inFile >> u;
+		inFile >> m;
+		inFile >> d;
+		inFile >> r;
+        if (u <= 0 ||
+            m <= 0 ||
+            d <= 0 ||
+            r <= '0'
+        ) {
+            cout << index << " " << u << " " << m << " " << d << " " << r << endl;
+        } else {
+            user_matrix_val[index] = u;
+    		movie_matrix_val[index] = m;
+    		date_matrix_val[index] = d;
+    		rating_matrix_val[index] = r;
+            index++;
+        }
+        if (index % 1000000 == 0) {
+            cout << "\r" << to_string(index * 100 / VALID_SIZE) << "%%" << flush;
         }
     }
+    // for (long i=0; i<VALID_SIZE; i++) {
+    //     inFile >> user_matrix_val[i];
+	// 	inFile >> movie_matrix_val[i];
+	// 	inFile >> date_matrix_val[i];
+	// 	inFile >> rating_matrix_val[i];
+    //     if (i % 100000 == 0) {
+    //         cout << "\r" << to_string(i * 100 / VALID_SIZE) << "%%" << flush;
+    //     }
+    // }
     cout << endl;
     inFile.close();
 
     cout << "Training model." << endl;
-    cout << "data at index 73599334: " << user_matrix[73599334] << " " << movie_matrix[73599334] << endl;
     svd_ans result = train_model(USER_SIZE, MOVIE_SIZE, 5, 0.007, 0.05,
         user_matrix, movie_matrix, date_matrix, rating_matrix,
         user_matrix_val, movie_matrix_val ,date_matrix_val, rating_matrix_val, 150);
 
     cout << "Final E_val: " << result.E_val << endl;
+
+    // Write U and V to a file
+    ofstream outFile;
+    outFile.open("svd_U_matrix.txt");
+    if (outFile.is_open()) {
+        outFile << result.U;
+    }
+    outFile.close();
+    outFile.open("svd_V_matrix.txt");
+    if (outFile.is_open()) {
+        outFile << result.V;
+    }
+    outFile.close();
+
 
     delete[] rating_matrix;
 	delete[] user_matrix;
@@ -224,6 +280,72 @@ int main() {
 	delete[] user_matrix_val;
 	delete[] movie_matrix_val;
     delete[] date_matrix_val;
+
+
+
+
+
+    // Read in test data
+    int* user_matrix_test = new int[TEST_SIZE];
+    short* movie_matrix_test = new short[TEST_SIZE];
+    short* date_matrix_test = new short[TEST_SIZE];
+    cout << "Reading testing input." << endl;
+    inFile.open("dataset5for_testing.dta");
+    if (!inFile) {
+        cout << "File not opened." << endl;
+        exit(1);
+    }
+    index = 0;
+    while (index < TEST_SIZE) {
+        int u;
+        short m;
+        short d;
+        char r;
+        inFile >> u;
+		inFile >> m;
+		inFile >> d;
+		inFile >> r;
+        if (u <= 0 ||
+            m <= 0 ||
+            d <= 0
+        ) {
+            cout << index << " " << u << " " << m << " " << d << " " << r << endl;
+        } else {
+            user_matrix_test[index] = u;
+    		movie_matrix_test[index] = m;
+    		date_matrix_test[index] = d;
+            index++;
+        }
+        if (index % 1000000 == 0) {
+            cout << "\r" << to_string(index * 100 / TEST_SIZE) << "%%" << flush;
+        }
+    }
+    // int garbage_zero_rating;
+    // for (long i=0; i<TRAIN_SIZE; i++) {
+    //     inFile >> user_matrix_test[i];
+	// 	inFile >> movie_matrix_test[i];
+	// 	inFile >> date_matrix_test[i];
+    //     inFile >> garbage_zero_rating;
+    //     if (i % 1000000 == 0) {
+    //         cout << "\r" << to_string(i * 100 / TEST_SIZE) << "%%" << flush;
+    //     }
+    // }
+    cout << endl;
+    inFile.close();
+
+    // Make predictions
+    outFile.open("testing_predictions_4_28.dta");
+    for (long r=0; r<TEST_SIZE; r++) {
+        int i = user_matrix_test[r];
+        int j = movie_matrix_test[r];
+        double prediction = result.U.row(i-1).dot( result.V.col(j-1) );
+        outFile << prediction << endl;
+    }
+    outFile.close();
+
+    delete[] user_matrix_test;
+    delete[] movie_matrix_test;
+    delete[] date_matrix_test;
 
     return 0;
 }

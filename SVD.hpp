@@ -10,9 +10,10 @@
 #include <cmath>
 #include <Eigen/Dense>
 
-#define TRAIN_SIZE  94362234
+#define TRAIN_SIZE  94362233
 // #define TRAIN_SIZE 500000
-#define VALID_SIZE  1965045
+#define VALID_SIZE  1965044
+#define TEST_SIZE  2749897
 #define USER_SIZE  458293
 #define MOVIE_SIZE  17770
 
