@@ -18,8 +18,8 @@
 #define MOVIE_SIZE 17701
 #define DO_SHUFFLE true  // true: time seeded shuffle, false: no shuffling
 
-#define DATASET_NUM  2  // The dataset that we want to select
-#define OUTFILE_NAME "dataset2_shuffled_all.dta"
+#define DATASET_NUM  5  // The dataset that we want to select
+#define OUTFILE_NAME "dataset5_shuffled_all.dta"
 
 
 
@@ -92,10 +92,13 @@ int main () {
 
 
 	// write extracted data to output file
+	cout << "Writing data to output file" << endl;
 	ofstream outFile;
 	outFile.open(OUTFILE_NAME);
 
-	for (long p = 0; p < list_of_indices.size(); p++) {
+	long datasize = list_of_indices.size();
+	long progress_section = datasize / 100;
+	for (long p = 0; p < datasize; p++) {
 
 		outFile << user_matrix[list_of_indices[p]] << " "
 		<< movie_matrix[list_of_indices[p]] << " "
@@ -106,11 +109,11 @@ int main () {
 			cout << "THIS LINE IS WRONG!!!" << endl;
 			cout << "p: " << p << " line: " << list_of_indices[p] << " user: " << user_matrix[list_of_indices[p]] << endl;
 		}
-		if (p % 1000000 == 0) {
-			cout << "\r" << to_string(p * 100 / READ_IN_LINES) << "%%" << flush;
+		if (p % progress_section == 0) {
+			cout << "\r" << to_string(p * 100 / datasize) << "%%" << flush;
 		}
 	}
-
+	cout << endl;
 	outFile.close();
 
 
