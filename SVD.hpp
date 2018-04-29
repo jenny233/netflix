@@ -10,10 +10,11 @@
 #include <cmath>
 #include <Eigen/Dense>
 
-#define TRAIN_SIZE  500000
-#define USER_SIZE  458294
-#define MOVIE_SIZE  17771
-#define EPOCH  300
+#define TRAIN_SIZE  94362234
+// #define TRAIN_SIZE 500000
+#define VALID_SIZE  1965045
+#define USER_SIZE  458293
+#define MOVIE_SIZE  17770
 
 using namespace std;
 using namespace Eigen;
@@ -22,21 +23,23 @@ using namespace Eigen;
 struct svd_ans {
     MatrixXd U;
     MatrixXd V;
-    float error;
+    double E_val;
 } ;
 
-VectorXd grad_U(VectorXd Ui, float Yij, VectorXd Vj, float reg, float eta);
+VectorXd grad_U(VectorXd Ui, double Yij, VectorXd Vj, double reg, double eta);
 
-VectorXd grad_V(VectorXd Vj, float Yij, VectorXd Ui, float reg, float eta);
+VectorXd grad_V(VectorXd Vj, double Yij, VectorXd Ui, double reg, double eta);
 
-float get_err(MatrixXd U, MatrixXd V,
+double get_err(MatrixXd U, MatrixXd V,
               int* user_matrix, short* movie_matrix,
-              short* date_matrix, char* rating_matrix, float reg=0.0);
+              short* date_matrix, char* rating_matrix, int size, double reg=0.0);
 
-svd_ans train_model(int M, int N, int K, float eta, float reg,
+svd_ans train_model(int M, int N, int K, double eta, double reg,
                     int* user_matrix, short* movie_matrix,
                     short* date_matrix, char* rating_matrix,
-                    float eps=0.0001, int max_epochs=EPOCH);
+                    int* user_matrix_val, short* movie_matrix_val,
+                    short* date_matrix_val, char* rating_matrix_val,
+                    int max_epochs);
 
 
 #endif
