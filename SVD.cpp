@@ -1,6 +1,6 @@
 #include "SVD.hpp"
 
-
+#define PRED_FILENAME "predictions_4_30_20lf.dta"
 
 
 VectorXd grad_U(VectorXd Ui, double Yij, VectorXd Vj, double reg, double eta) {
@@ -179,9 +179,7 @@ svd_ans train_model(int M, int N, int K, double eta, double reg,
     return result;
 }
 
-
-int main() {
-
+void complete_training(int M, int N, int K, double eta, double reg, int max_epochs) {
     // Four arrays to store all the training data read in
     int* user_matrix = new int[TRAIN_SIZE];
     short* movie_matrix = new short[TRAIN_SIZE];
@@ -194,9 +192,12 @@ int main() {
     short* date_matrix_val = new short[VALID_SIZE];
     char* rating_matrix_val = new char[VALID_SIZE];
 
+    // IO
+    ifstream inFile;
+    ofstream outFile;
+
 
     // Read training data
-    ifstream inFile;
     cout << "Reading training input." << endl;
     inFile.open("../dataset1_shuffled_all.dta");
     if (!inFile) {
@@ -239,16 +240,15 @@ int main() {
 
     // Train SVD
     cout << "Training model." << endl;
-    svd_ans result = train_model(USER_SIZE, MOVIE_SIZE, 20, 0.03, 0.05,
+    svd_ans result = train_model(M, N, K, eta, reg,
         user_matrix, movie_matrix, date_matrix, rating_matrix,
-        user_matrix_val, movie_matrix_val ,date_matrix_val, rating_matrix_val, 5);
+        user_matrix_val, movie_matrix_val ,date_matrix_val, rating_matrix_val, max_epochs);
 
     cout << "Final E_in: " << result.E_in << "  E_val: " << result.E_val << endl;
 
 
 
     // Write U and V to a file
-    ofstream outFile;
     outFile.open("svd_U_matrix.txt");
     if (outFile.is_open()) {
         outFile << result.U;
@@ -285,7 +285,7 @@ int main() {
         exit(1);
     }
     int garbage_zero_rating;
-    for (long i=0; i<TRAIN_SIZE; i++) {
+    for (long i=0; i<TEST_SIZE; i++) {
         inFile >> user_matrix_test[i];
 		inFile >> movie_matrix_test[i];
 		inFile >> date_matrix_test[i];
@@ -298,7 +298,7 @@ int main() {
     inFile.close();
 
     // Make predictions
-    outFile.open("testing_predictions_4_29.dta");
+    outFile.open(PRED_FILENAME);
     for (long r=0; r<TEST_SIZE; r++) {
         int i = user_matrix_test[r];
         int j = movie_matrix_test[r];
@@ -310,6 +310,94 @@ int main() {
     delete[] user_matrix_test;
     delete[] movie_matrix_test;
     delete[] date_matrix_test;
+}
+
+
+
+void predict_from_UV(int M, int N, int K) {
+
+    // Initialize
+    MatrixXd U(M, K);
+    MatrixXd V(K, N);
+    ifstream inFile;
+    ofstream outFile;
+    int* user_matrix_test = new int[TEST_SIZE];
+    short* movie_matrix_test = new short[TEST_SIZE];
+    short* date_matrix_test = new short[TEST_SIZE];
+
+    // Read in U
+    cout << "Reading U matrix." << endl;
+    inFile.open("svd_U_matrix.txt");
+    if (!inFile) {
+        std::cout << "File not opened." << endl;
+        exit(1);
+    }
+    for (long r = 0; r < M; r++) {
+        for (int c = 0; c < K; c++) {
+            inFile >> U(r, c);
+        }
+    }
+    inFile.close();
+
+    // Read in V
+    cout << "Reading V matrix." << endl;
+    inFile.open("svd_V_matrix.txt");
+    if (!inFile) {
+        std::cout << "File not opened." << endl;
+        exit(1);
+    }
+    for (long r = 0; r < K; r++) {
+        for (int c = 0; c < N; c++) {
+            inFile >> V(r, c);
+        }
+    }
+    inFile.close();
+
+
+
+    // Read in test data
+    cout << "Reading testing input." << endl;
+    inFile.open("../dataset5_unshuffled_all.dta");
+    if (!inFile) {
+        cout << "File not opened." << endl;
+        exit(1);
+    }
+    int garbage_zero_rating;
+    for (long i=0; i<TEST_SIZE; i++) {
+        inFile >> user_matrix_test[i];
+        inFile >> movie_matrix_test[i];
+        inFile >> date_matrix_test[i];
+        inFile >> garbage_zero_rating;
+        if (i % 1000000 == 0) {
+            cout << "\r" << to_string(i * 100 / TEST_SIZE) << "%%" << flush;
+        }
+    }
+    cout << endl;
+    inFile.close();
+
+    // Make predictions
+    cout << "Making predictions." << endl;
+    outFile.open(PRED_FILENAME);
+    for (long r=0; r<TEST_SIZE; r++) {
+        int i = user_matrix_test[r];
+        int j = movie_matrix_test[r];
+        double prediction = U.row(i-1).dot( V.col(j-1) );
+        outFile << prediction << endl;
+    }
+    outFile.close();
+
+    delete[] user_matrix_test;
+    delete[] movie_matrix_test;
+    delete[] date_matrix_test;
+
+}
+
+
+int main() {
+
+    complete_training(USER_SIZE, MOVIE_SIZE, 20, 0.03, 0.05, 100);
+    // predict_from_UV(USER_SIZE, MOVIE_SIZE, 20);
+
 
     return 0;
 }
