@@ -9,6 +9,8 @@
 #include <cstdlib>
 #include <cmath>
 #include <Eigen/Dense>
+#include <random>       // std::default_random_engine
+#include <chrono>       // std::chrono::system_clock
 
 #define TRAIN_SIZE  94362233
 // #define TRAIN_SIZE 500000
@@ -18,6 +20,7 @@
 #define MOVIE_SIZE  17770
 
 using namespace std;
+using namespace std::chrono;
 using namespace Eigen;
 
 
@@ -34,7 +37,7 @@ VectorXd grad_V(VectorXd Vj, double Yij, VectorXd Ui, double reg, double eta);
 
 double get_err(MatrixXd U, MatrixXd V,
               int* user_matrix, short* movie_matrix,
-              short* date_matrix, char* rating_matrix, int size, double reg=0.0);
+              short* date_matrix, char* rating_matrix, double size, double reg=0.0);
 
 svd_ans train_model(int M, int N, int K, double eta, double reg,
                     int* user_matrix, short* movie_matrix,

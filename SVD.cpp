@@ -52,12 +52,12 @@ double get_err(MatrixXd U, MatrixXd V,
     }
     // Add error penalty due to regularization if regularization
     // parameter is nonzero
-    if (reg != 0) {
-        double U_frobenius_norm = U.squaredNorm();
-        double V_frobenius_norm = V.squaredNorm();
-        err += 0.5 * reg * pow(U_frobenius_norm, 2.0);
-        err += 0.5 * reg * pow(V_frobenius_norm, 2.0);
-    }
+    // if (reg != 0) {
+    //     double U_frobenius_norm = U.squaredNorm();
+    //     double V_frobenius_norm = V.squaredNorm();
+    //     err += 0.5 * reg * pow(U_frobenius_norm, 2.0);
+    //     err += 0.5 * reg * pow(V_frobenius_norm, 2.0);
+    // }
     // Return the mean of the regularized error
     return err / size;
 }
@@ -85,34 +85,53 @@ svd_ans train_model(int M, int N, int K, double eta, double reg,
 
 
     // Initialize U, V
-    MatrixXd U = MatrixXd::Random(M, K) - MatrixXd::Constant(M, K, 0.5);
-    MatrixXd V = MatrixXd::Random(K, N) - MatrixXd::Constant(K, N, 0.5);
+    MatrixXd U = MatrixXd::Random(M, K);
+    MatrixXd V = MatrixXd::Random(K, N);
 
     double E_in, E_val, init_E_in, init_E_val, delta;
 
 
-    // TODO: Calculate E_in only on a portion of the in data.
-    //       It takes wayyyyyy too long to go through all of the training points.
+    // Calculate E_in only on a portion of the in data.
 
-    init_E_in = get_err(U, V, user_matrix, movie_matrix,
-                        date_matrix, rating_matrix,
-                        TRAIN_SIZE, reg);
-    cout << "Initial E_in: " << init_E_in << endl;
-    // init_E_val = get_err(U, V, user_matrix_val, movie_matrix_val,
-    //                      date_matrix_val, rating_matrix_val,
-    //                      VALID_SIZE, reg);
-    // cout << "Initial E_val: " << init_E_val << endl;
+    system_clock::time_point start_time, end_time; // initialize timers
+    start_time = system_clock::now();
+
+    srand ( unsigned ( time(0) ) );
+    long rand_n = rand() % (TRAIN_SIZE-1000001);
+    init_E_in = get_err(U, V, user_matrix+rand_n, movie_matrix+rand_n,
+                        date_matrix+rand_n, rating_matrix+rand_n,
+                        1000000, reg);
+
+    end_time = system_clock::now();
+    auto duration = duration_cast<seconds>( end_time - start_time ).count();
+
+    cout << "Initial E_in: " << init_E_in
+         << "  Time: " << duration / 60 << "m" << duration % 60 << "s" << endl;
+
+    start_time = system_clock::now();
+    init_E_val = get_err(U, V, user_matrix_val, movie_matrix_val,
+                         date_matrix_val, rating_matrix_val,
+                         VALID_SIZE, reg);
+    end_time = system_clock::now();
+    duration = duration_cast<seconds>( end_time - start_time ).count();
+    cout << "Initial E_val: " << init_E_val
+         << "  Time: " << duration / 60 << "m" << duration % 60 << "s" << endl;
 
 
+    // Stochastic gradient descent
     for (int epoch = 0; epoch < max_epochs; epoch++) {
 
         cout << "Epoch " << epoch << ":" << endl;
+        start_time = system_clock::now();
 
         for (long ind = 0; ind < TRAIN_SIZE; ind++) {
 
             // Progress bar
             if (ind % 1000000 == 0) {
-                cout << "\r" << to_string(ind * 100 / TRAIN_SIZE) << "%%" << flush;
+                end_time = system_clock::now();
+                duration = duration_cast<seconds>( end_time - start_time ).count();
+                cout << "\r" << to_string(ind * 100 / TRAIN_SIZE) << "%%"
+                     << "  Time: " << duration / 60 << "m" << duration % 60 << "s" << flush;
             }
 
             // Update U[i], V[j]
@@ -126,39 +145,35 @@ svd_ans train_model(int M, int N, int K, double eta, double reg,
         }
 
         // At end of epoch, print E_in, E_val
-        E_in = get_err(U, V, user_matrix, movie_matrix,
-                             date_matrix, rating_matrix,
-                             TRAIN_SIZE, reg);
+        srand ( unsigned ( time(0) ) );
+        rand_n = rand() % (TRAIN_SIZE-1000001);
+        E_in = get_err(U, V, user_matrix+rand_n, movie_matrix+rand_n,
+                            date_matrix+rand_n, rating_matrix+rand_n,
+                            1000000, reg);
         E_val = get_err(U, V, user_matrix_val, movie_matrix_val,
                               date_matrix_val, rating_matrix_val,
                               VALID_SIZE, reg);
         cout << endl << "E_in: " << E_in << "  E_val: " << E_val << endl;
 
 
-        // Compute change in E_in for first epoch
-        if (epoch == 0) {
-            delta = init_E_in - E_in;
-        }
-        // If E_in doesn't decrease by some fraction <eps> = 0.001
-        // of the initial decrease in E_in, stop early
-        else if (init_E_in - E_in < 0.001 * delta) {
-            break;
-        }
-
-        // If E_val doesn't decrease, stop early
-        // if (init_E_val < E_val) {
+        // // Compute change in E_in for first epoch
+        // if (epoch == 0) {
+        //     delta = init_E_in - E_in;
+        // }
+        // // If E_in doesn't decrease by some fraction <eps> = 0.001
+        // // of the initial decrease in E_in, stop early
+        // else if (init_E_in - E_in < 0.001 * delta) {
         //     break;
         // }
-        // init_E_val = E_val;
+
+        // If E_val doesn't decrease, stop early
+        if (init_E_val < E_val) {
+            break;
+        }
+        init_E_val = E_val;
         eta = 0.9 * eta;
     }
     cout << endl;
-    // cout << "U:" << endl;
-    // cout << U.block<5,5>(0, 0) << endl;
-    // cout << "V:" << endl;
-    // cout << V.block<5,5>(0, 0) << endl;
-
-    // delete[] indices;
 
     svd_ans result = {U, V, E_in, E_val};
     return result;
@@ -183,7 +198,7 @@ int main() {
     // Read training data
     ifstream inFile;
     cout << "Reading training input." << endl;
-    inFile.open("../dataset1_unshuffled_all.dta");
+    inFile.open("../dataset1_shuffled_all.dta");
     if (!inFile) {
         std::cout << "File not opened." << endl;
         exit(1);
@@ -224,9 +239,9 @@ int main() {
 
     // Train SVD
     cout << "Training model." << endl;
-    svd_ans result = train_model(USER_SIZE, MOVIE_SIZE, 5, 0.007, 0.05,
+    svd_ans result = train_model(USER_SIZE, MOVIE_SIZE, 20, 0.03, 0.05,
         user_matrix, movie_matrix, date_matrix, rating_matrix,
-        user_matrix_val, movie_matrix_val ,date_matrix_val, rating_matrix_val, 150);
+        user_matrix_val, movie_matrix_val ,date_matrix_val, rating_matrix_val, 5);
 
     cout << "Final E_in: " << result.E_in << "  E_val: " << result.E_val << endl;
 
