@@ -171,7 +171,7 @@ svd_ans train_model(int M, int N, int K, double eta, double reg,
             break;
         }
         init_E_val = E_val;
-        eta = 0.9 * eta;
+        // eta = 0.9 * eta;
     }
     cout << endl;
 
@@ -395,7 +395,7 @@ void predict_from_UV(int M, int N, int K) {
 
 int main() {
 
-    complete_training(USER_SIZE, MOVIE_SIZE, 20, 0.03, 0.05, 100);
+    complete_training(USER_SIZE, MOVIE_SIZE, 100, 0.03, 0.05, 100);
     // predict_from_UV(USER_SIZE, MOVIE_SIZE, 20);
 
 
