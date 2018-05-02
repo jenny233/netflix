@@ -1,6 +1,6 @@
 #include "SVD.hpp"
-
-#define PRED_FILENAME "predictions_4_30_20lf.dta"
+#include <string>
+#define PRED_FILENAME "predictions_5_1_100lf.dta"
 
 
 VectorXd grad_U(VectorXd Ui, double Yij, VectorXd Vj, double reg, double eta) {
@@ -119,11 +119,28 @@ svd_ans train_model(int M, int N, int K, double eta, double reg,
 
 
     // Stochastic gradient descent
+    ofstream outFile;
     for (int epoch = 0; epoch < max_epochs; epoch++) {
 
         cout << "Epoch " << epoch << ":" << endl;
         start_time = system_clock::now();
-
+		if (epoch % 10 == 0 )
+		{
+			cout<<"printing checkpoint"<<endl;
+			string filename = ("svd_U_matrix_5_1_1.txt");
+			// Write U and V to a file
+			outFile.open(filename);
+			if (outFile.is_open()) {
+				outFile << U;
+			}
+			outFile.close();
+			filename = ("svd_V_matrix_5_1_1.txt");
+			outFile.open(filename);
+			if (outFile.is_open()) {
+				outFile << V;
+			}
+			outFile.close();
+		}
         for (long ind = 0; ind < TRAIN_SIZE; ind++) {
 
             // Progress bar
@@ -199,7 +216,7 @@ void complete_training(int M, int N, int K, double eta, double reg, int max_epoc
 
     // Read training data
     cout << "Reading training input." << endl;
-    inFile.open("../dataset1_shuffled_all.dta");
+    inFile.open("dataset1_shuffled_all.dta");
     if (!inFile) {
         std::cout << "File not opened." << endl;
         exit(1);
@@ -220,7 +237,7 @@ void complete_training(int M, int N, int K, double eta, double reg, int max_epoc
 
     // Read validation data
     cout << "Reading validation input." << endl;
-    inFile.open("../dataset2_shuffled_all.dta");
+    inFile.open("dataset2_shuffled_all.dta");
     if (!inFile) {
         std::cout << "File not opened." << endl;
         exit(1);
@@ -249,12 +266,12 @@ void complete_training(int M, int N, int K, double eta, double reg, int max_epoc
 
 
     // Write U and V to a file
-    outFile.open("svd_U_matrix.txt");
+    outFile.open("svd_U_matrix_5_1.txt");
     if (outFile.is_open()) {
         outFile << result.U;
     }
     outFile.close();
-    outFile.open("svd_V_matrix.txt");
+    outFile.open("svd_V_matrix_5_1.txt");
     if (outFile.is_open()) {
         outFile << result.V;
     }
@@ -279,7 +296,7 @@ void complete_training(int M, int N, int K, double eta, double reg, int max_epoc
     short* movie_matrix_test = new short[TEST_SIZE];
     short* date_matrix_test = new short[TEST_SIZE];
     cout << "Reading testing input." << endl;
-    inFile.open("../dataset5_unshuffled_all.dta");
+    inFile.open("dataset5_unshuffled_all.dta");
     if (!inFile) {
         cout << "File not opened." << endl;
         exit(1);
@@ -357,7 +374,7 @@ void predict_from_UV(int M, int N, int K) {
 
     // Read in test data
     cout << "Reading testing input." << endl;
-    inFile.open("../dataset5_unshuffled_all.dta");
+    inFile.open("dataset5_unshuffled_all.dta");
     if (!inFile) {
         cout << "File not opened." << endl;
         exit(1);
@@ -395,7 +412,7 @@ void predict_from_UV(int M, int N, int K) {
 
 int main() {
 
-    complete_training(USER_SIZE, MOVIE_SIZE, 100, 0.03, 0.05, 100);
+    complete_training(USER_SIZE, MOVIE_SIZE, 100, 0.03, 0.05, 40);
     // predict_from_UV(USER_SIZE, MOVIE_SIZE, 20);
 
 
