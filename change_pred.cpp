@@ -1,6 +1,7 @@
 #include "SVD.hpp"
 #include <string>
 #define PRED_FILENAME "predictions_5_2_100lf.dta"
+#define LANTENT_FACTORS 20
 void predict(int M, int N, int K) {
 
     // Initialize
@@ -69,6 +70,14 @@ void predict(int M, int N, int K) {
         int i = user_matrix_test[r];
         int j = movie_matrix_test[r];
         double prediction = U.row(i-1).dot( V.col(j-1) );
+        if (prediction < 1)
+        {
+			prediction = 1;
+		}
+		if (prediction > 5)
+		{
+			prediction = 5;
+		}
         outFile << prediction << endl;
     }
     outFile.close();
@@ -80,5 +89,5 @@ void predict(int M, int N, int K) {
 }
 int main()
 {
-	 predict(USER_SIZE, MOVIE_SIZE, 100);
+	 predict(USER_SIZE, MOVIE_SIZE, LANTENT_FACTORS);
 }

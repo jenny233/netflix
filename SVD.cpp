@@ -399,6 +399,14 @@ void predict_from_UV(int M, int N, int K) {
         int i = user_matrix_test[r];
         int j = movie_matrix_test[r];
         double prediction = U.row(i-1).dot( V.col(j-1) );
+        if (prediction < 1)
+        {
+			prediction = 1;
+		}
+		if (prediction > 5)
+		{
+			prediction = 5;
+		}
         outFile << prediction << endl;
     }
     outFile.close();
@@ -411,8 +419,8 @@ void predict_from_UV(int M, int N, int K) {
 
 
 int main() {
-
-    complete_training(USER_SIZE, MOVIE_SIZE, 100, 0.03, 0.05, 40);
+	cout<< "lf :" << 0.4 << endl;
+    complete_training(USER_SIZE, MOVIE_SIZE, 20, 0.01, 0.07, 400);
     // predict_from_UV(USER_SIZE, MOVIE_SIZE, 20);
 
 
