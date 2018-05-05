@@ -1,10 +1,9 @@
-#include "SVD.hpp"
+#include "SVD_with_bias.hpp"
 #include <string>
 #define LATENT_FACTORS 1
 #define REGULARIZATION 0.07
 #define LEARNING_RATE  0.05
 #define MAX_EPOCH      400
-#define TRAINING_DATA_AVERAGE 3.60861
 #define PRED_FILENAME ("../predictions" + to_string(LATENT_FACTORS) + "lf_.dta")
 
 // Two arrays for holding the user and movie bias
