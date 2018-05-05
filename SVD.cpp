@@ -1,6 +1,6 @@
 #include "SVD.hpp"
 #include <string>
-#define LATENT_FACTORS 1
+#define LATENT_FACTORS 10
 #define REGULARIZATION 0.07
 #define LEARNING_RATE  0.05
 #define MAX_EPOCH      400

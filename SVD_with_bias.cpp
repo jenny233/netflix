@@ -1,15 +1,15 @@
 #include "SVD_with_bias.hpp"
 #include <string>
-#define LATENT_FACTORS 1
+#define LATENT_FACTORS 20
 #define REGULARIZATION 0.07
-#define LEARNING_RATE  0.05
+#define LEARNING_RATE  0.01
 #define MAX_EPOCH      400
 #define PRED_FILENAME ("../predictions" + to_string(LATENT_FACTORS) + "lf_.dta")
 
 // Two arrays for holding the user and movie bias
 double* user_bias = new double[USER_SIZE + 1];
 double* movie_bias = new double[MOVIE_SIZE + 1];
-	
+
 VectorXd grad_U(VectorXd Ui, double Yij, VectorXd Vj, double reg, double eta) {
     /*
     Takes as input Ui (the ith row of U), a training point Yij, the column
@@ -223,13 +223,13 @@ svd_ans complete_training(int M, int N, int K, double eta, double reg, int max_e
     short* movie_matrix_val = new short[VALID_SIZE];
     short* date_matrix_val = new short[VALID_SIZE];
     double* rating_matrix_val = new double[VALID_SIZE];
-	
+
 
 	// IO
     ifstream inFile;
     ofstream outFile;
 	ifstream inFile_bias;
-	
+
 	// Read in bias /////
 	inFile_bias.open("../bias_checkpoint.txt");
 	cout << "Reading bias data for users" << endl;
