@@ -39,6 +39,8 @@ double get_err(MatrixXd U, MatrixXd V,
               int* user_matrix, short* movie_matrix,
               short* date_matrix, char* rating_matrix, double size, double reg=0.0);
 
+MatrixXd read_matrix_from_file(int n_rows, int n_cols, string filename);
+
 svd_ans train_model_from_UV(int M, int N, int K, double eta, double reg,
                           int* user_matrix, short* movie_matrix,
                           short* date_matrix, char* rating_matrix,

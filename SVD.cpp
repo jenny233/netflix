@@ -33,7 +33,7 @@ VectorXd grad_V(VectorXd Vj, double Yij, VectorXd Ui, double reg, double eta) {
 
 double get_err(MatrixXd U, MatrixXd V,
               int* user_matrix, short* movie_matrix,
-              short* date_matrix, char* rating_matrix,
+              short* date_matrix, double* rating_matrix,
               double size, double reg) {
     /*
     Takes as input a matrix Y of triples (i, j, Y_ij) where i is the index of a user,
@@ -51,7 +51,7 @@ double get_err(MatrixXd U, MatrixXd V,
     for (long r=0; r<size; r++) {
         int i = user_matrix[r];
         int j = movie_matrix[r];
-        int Yij = rating_matrix[r] - '0';
+        double Yij = rating_matrix[r];
         err += pow(Yij - U.row(i-1).dot( V.col(j-1) ) , 2.0);
     }
     // Return the RMSE
@@ -77,9 +77,9 @@ MatrixXd read_matrix_from_file(int n_rows, int n_cols, string filename) {
 
 svd_ans train_model_from_UV(int M, int N, int K, double eta, double reg,
                             int* user_matrix, short* movie_matrix,
-                            short* date_matrix, char* rating_matrix,
+                            short* date_matrix, double* rating_matrix,
                             int* user_matrix_val, short* movie_matrix_val,
-                            short* date_matrix_val, char* rating_matrix_val,
+                            short* date_matrix_val, double* rating_matrix_val,
                             MatrixXd U, MatrixXd V, int max_epochs) {
     /*
     Given a training data matrix Y containing rows (i, j, Y_ij)
@@ -163,7 +163,7 @@ svd_ans train_model_from_UV(int M, int N, int K, double eta, double reg,
             int i = user_matrix[ind];
             int j = movie_matrix[ind];
             int date = date_matrix[ind];
-            int Yij = rating_matrix[ind] - '0';
+            double Yij = rating_matrix[ind];
 
             U.row(i-1) = grad_U(U.row(i-1), Yij, V.col(j-1), reg, eta);
             V.col(j-1) = grad_V(V.col(j-1), Yij, U.row(i-1), reg, eta);
@@ -213,13 +213,13 @@ svd_ans complete_training(int M, int N, int K, double eta, double reg, int max_e
     int* user_matrix = new int[TRAIN_SIZE];
     short* movie_matrix = new short[TRAIN_SIZE];
     short* date_matrix = new short[TRAIN_SIZE];
-    char* rating_matrix = new char[TRAIN_SIZE];
+    double* rating_matrix = new double[TRAIN_SIZE];
 
     // Four arrays to store all the validation data read in
     int* user_matrix_val = new int[VALID_SIZE];
     short* movie_matrix_val = new short[VALID_SIZE];
     short* date_matrix_val = new short[VALID_SIZE];
-    char* rating_matrix_val = new char[VALID_SIZE];
+    double* rating_matrix_val = new double[VALID_SIZE];
 
     // IO
     ifstream inFile;
@@ -392,10 +392,29 @@ void predict_from_UV(int M, int N, int K, MatrixXd U, MatrixXd V) {
 
 
 int main() {
+
+    // To do training from the very beginning
     svd_ans result = complete_training(USER_SIZE, MOVIE_SIZE, LATENT_FACTORS,
                                        LEARNING_RATE, REGULARIZATION, MAX_EPOCH);
     predict_from_UV(USER_SIZE, MOVIE_SIZE, LATENT_FACTORS, result.U, result.V);
 
+
+
+    // To do training from saved U V matrices
+
+    // MatrixXd U = read_matrix_from_file(M, K, U_filename);
+    // MatrixXd V = read_matrix_from_file(K, N, V_filename);
+    // svd_ans result = train_model_from_UV(M, N, K, eta, reg,
+    //                                     user_matrix, movie_matrix,
+    //                                     date_matrix, rating_matrix,
+    //                                     user_matrix_val, movie_matrix_val,
+    //                                     date_matrix_val, rating_matrix_val,
+    //                                     U, V, max_epochs);
+    // predict_from_UV(USER_SIZE, MOVIE_SIZE, LATENT_FACTORS, result.U, result.V);
+
+
+
+    // To predict from saved U V matrices
 
     // MatrixXd U = read_matrix_from_file(M, K, U_filename);
     // MatrixXd V = read_matrix_from_file(K, N, V_filename);
