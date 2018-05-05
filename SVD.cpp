@@ -1,6 +1,10 @@
 #include "SVD.hpp"
 #include <string>
-#define PRED_FILENAME "predictions_5_1_100lf.dta"
+#define LATENT_FACTORS 1
+#define REGULARIZATION 0.07
+#define LEARNING_RATE  0.05
+#define MAX_EPOCH      400
+#define PRED_FILENAME ("../predictions" + to_string(LATENT_FACTORS) + "lf_.dta")
 
 
 VectorXd grad_U(VectorXd Ui, double Yij, VectorXd Vj, double reg, double eta) {
@@ -48,27 +52,35 @@ double get_err(MatrixXd U, MatrixXd V,
         int i = user_matrix[r];
         int j = movie_matrix[r];
         int Yij = rating_matrix[r] - '0';
-        err += 0.5 * pow(Yij - U.row(i-1).dot( V.col(j-1) ) , 2.0);
+        err += pow(Yij - U.row(i-1).dot( V.col(j-1) ) , 2.0);
     }
-    // Add error penalty due to regularization if regularization
-    // parameter is nonzero
-    // if (reg != 0) {
-    //     double U_frobenius_norm = U.squaredNorm();
-    //     double V_frobenius_norm = V.squaredNorm();
-    //     err += 0.5 * reg * pow(U_frobenius_norm, 2.0);
-    //     err += 0.5 * reg * pow(V_frobenius_norm, 2.0);
-    // }
-    // Return the mean of the regularized error
-    return err / size;
+    // Return the RMSE
+    return sqrt(err / size);
 }
 
+MatrixXd read_matrix_from_file(int n_rows, int n_cols, string filename) {
+    MatrixXd matrix(n_rows, n_cols);
+    ifstream inFile;
+    inFile.open(filename);
+    if (!inFile) {
+        std::cout << "File not opened." << endl;
+        exit(1);
+    }
+    for (long r = 0; r < n_rows; r++) {
+        for (int c = 0; c < n_cols; c++) {
+            inFile >> matrix(r, c);
+        }
+    }
+    inFile.close();
+    return matrix;
+}
 
-svd_ans train_model(int M, int N, int K, double eta, double reg,
-                int* user_matrix, short* movie_matrix,
-                short* date_matrix, char* rating_matrix,
-                int* user_matrix_val, short* movie_matrix_val,
-                short* date_matrix_val, char* rating_matrix_val,
-                int max_epochs) {
+svd_ans train_model_from_UV(int M, int N, int K, double eta, double reg,
+                            int* user_matrix, short* movie_matrix,
+                            short* date_matrix, char* rating_matrix,
+                            int* user_matrix_val, short* movie_matrix_val,
+                            short* date_matrix_val, char* rating_matrix_val,
+                            MatrixXd U, MatrixXd V, int max_epochs) {
     /*
     Given a training data matrix Y containing rows (i, j, Y_ij)
     where Y_ij is user i's rating on movie j, learns an
@@ -83,13 +95,7 @@ svd_ans train_model(int M, int N, int K, double eta, double reg,
     of the model.
     */
 
-
-    // Initialize U, V
-    MatrixXd U = MatrixXd::Random(M, K);
-    MatrixXd V = MatrixXd::Random(K, N);
-
     double E_in, E_val, init_E_in, init_E_val, delta;
-
 
     // Calculate E_in only on a portion of the in data.
 
@@ -124,17 +130,19 @@ svd_ans train_model(int M, int N, int K, double eta, double reg,
 
         cout << "Epoch " << epoch << ":" << endl;
         start_time = system_clock::now();
+
+        // Checkpoint every 10 epochs
 		if (epoch % 10 == 0 )
 		{
 			cout<<"printing checkpoint"<<endl;
-			string filename = ("svd_U_matrix_5_1_1.txt");
+			string filename = ("../svd_U_matrix_"+to_string(K)+"lf_"+to_string(epoch)+"ep.txt");
 			// Write U and V to a file
 			outFile.open(filename);
 			if (outFile.is_open()) {
 				outFile << U;
 			}
 			outFile.close();
-			filename = ("svd_V_matrix_5_1_1.txt");
+			filename = ("../svd_V_matrix_"+to_string(K)+"lf_"+to_string(epoch)+"ep.txt");
 			outFile.open(filename);
 			if (outFile.is_open()) {
 				outFile << V;
@@ -173,18 +181,22 @@ svd_ans train_model(int M, int N, int K, double eta, double reg,
         cout << endl << "E_in: " << E_in << "  E_val: " << E_val << endl;
 
 
-        // // Compute change in E_in for first epoch
-        // if (epoch == 0) {
-        //     delta = init_E_in - E_in;
-        // }
-        // // If E_in doesn't decrease by some fraction <eps> = 0.001
-        // // of the initial decrease in E_in, stop early
-        // else if (init_E_in - E_in < 0.001 * delta) {
-        //     break;
-        // }
-
         // If E_val doesn't decrease, stop early
-        if (init_E_val < E_val) {
+        if (init_E_val <= E_val) {
+            cout<<"E_val is increasing! Printing checkpoint"<<endl;
+			string filename = ("../svd_U_matrix_"+to_string(K)+"lf_"+to_string(epoch)+"ep.txt");
+			// Write U and V to a file
+			outFile.open(filename);
+			if (outFile.is_open()) {
+				outFile << U;
+			}
+			outFile.close();
+			filename = ("../svd_V_matrix_"+to_string(K)+"lf_"+to_string(epoch)+"ep.txt");
+			outFile.open(filename);
+			if (outFile.is_open()) {
+				outFile << V;
+			}
+			outFile.close();
             break;
         }
         init_E_val = E_val;
@@ -196,7 +208,7 @@ svd_ans train_model(int M, int N, int K, double eta, double reg,
     return result;
 }
 
-void complete_training(int M, int N, int K, double eta, double reg, int max_epochs) {
+svd_ans complete_training(int M, int N, int K, double eta, double reg, int max_epochs) {
     // Four arrays to store all the training data read in
     int* user_matrix = new int[TRAIN_SIZE];
     short* movie_matrix = new short[TRAIN_SIZE];
@@ -216,7 +228,7 @@ void complete_training(int M, int N, int K, double eta, double reg, int max_epoc
 
     // Read training data
     cout << "Reading training input." << endl;
-    inFile.open("dataset1_shuffled_all.dta");
+    inFile.open("../dataset1_shuffled_all.dta");
     if (!inFile) {
         std::cout << "File not opened." << endl;
         exit(1);
@@ -237,7 +249,7 @@ void complete_training(int M, int N, int K, double eta, double reg, int max_epoc
 
     // Read validation data
     cout << "Reading validation input." << endl;
-    inFile.open("dataset2_shuffled_all.dta");
+    inFile.open("../dataset2_shuffled_all.dta");
     if (!inFile) {
         std::cout << "File not opened." << endl;
         exit(1);
@@ -257,26 +269,17 @@ void complete_training(int M, int N, int K, double eta, double reg, int max_epoc
 
     // Train SVD
     cout << "Training model." << endl;
-    svd_ans result = train_model(M, N, K, eta, reg,
-        user_matrix, movie_matrix, date_matrix, rating_matrix,
-        user_matrix_val, movie_matrix_val ,date_matrix_val, rating_matrix_val, max_epochs);
+
+    MatrixXd U = MatrixXd::Random(M, K);
+    MatrixXd V = MatrixXd::Random(K, N);
+    svd_ans result = train_model_from_UV(M, N, K, eta, reg,
+                                        user_matrix, movie_matrix,
+                                        date_matrix, rating_matrix,
+                                        user_matrix_val, movie_matrix_val,
+                                        date_matrix_val, rating_matrix_val,
+                                        U, V, max_epochs);
 
     cout << "Final E_in: " << result.E_in << "  E_val: " << result.E_val << endl;
-
-
-
-    // Write U and V to a file
-    outFile.open("svd_U_matrix_5_1.txt");
-    if (outFile.is_open()) {
-        outFile << result.U;
-    }
-    outFile.close();
-    outFile.open("svd_V_matrix_5_1.txt");
-    if (outFile.is_open()) {
-        outFile << result.V;
-    }
-    outFile.close();
-
 
     delete[] rating_matrix;
 	delete[] user_matrix;
@@ -287,8 +290,7 @@ void complete_training(int M, int N, int K, double eta, double reg, int max_epoc
 	delete[] movie_matrix_val;
     delete[] date_matrix_val;
 
-
-
+    return result;
 
 
     // Read in test data
@@ -304,8 +306,8 @@ void complete_training(int M, int N, int K, double eta, double reg, int max_epoc
     int garbage_zero_rating;
     for (long i=0; i<TEST_SIZE; i++) {
         inFile >> user_matrix_test[i];
-		inFile >> movie_matrix_test[i];
-		inFile >> date_matrix_test[i];
+        inFile >> movie_matrix_test[i];
+        inFile >> date_matrix_test[i];
         inFile >> garbage_zero_rating;
         if (i % 1000000 == 0) {
             cout << "\r" << to_string(i * 100 / TEST_SIZE) << "%%" << flush;
@@ -331,50 +333,20 @@ void complete_training(int M, int N, int K, double eta, double reg, int max_epoc
 
 
 
-void predict_from_UV(int M, int N, int K) {
+void predict_from_UV(int M, int N, int K, MatrixXd U, MatrixXd V) {
 
     // Initialize
-    MatrixXd U(M, K);
-    MatrixXd V(K, N);
+
     ifstream inFile;
     ofstream outFile;
+
     int* user_matrix_test = new int[TEST_SIZE];
     short* movie_matrix_test = new short[TEST_SIZE];
     short* date_matrix_test = new short[TEST_SIZE];
 
-    // Read in U
-    cout << "Reading U matrix." << endl;
-    inFile.open("svd_U_matrix.txt");
-    if (!inFile) {
-        std::cout << "File not opened." << endl;
-        exit(1);
-    }
-    for (long r = 0; r < M; r++) {
-        for (int c = 0; c < K; c++) {
-            inFile >> U(r, c);
-        }
-    }
-    inFile.close();
-
-    // Read in V
-    cout << "Reading V matrix." << endl;
-    inFile.open("svd_V_matrix.txt");
-    if (!inFile) {
-        std::cout << "File not opened." << endl;
-        exit(1);
-    }
-    for (long r = 0; r < K; r++) {
-        for (int c = 0; c < N; c++) {
-            inFile >> V(r, c);
-        }
-    }
-    inFile.close();
-
-
-
     // Read in test data
     cout << "Reading testing input." << endl;
-    inFile.open("dataset5_unshuffled_all.dta");
+    inFile.open("../dataset5_unshuffled_all.dta");
     if (!inFile) {
         cout << "File not opened." << endl;
         exit(1);
@@ -391,6 +363,7 @@ void predict_from_UV(int M, int N, int K) {
     }
     cout << endl;
     inFile.close();
+
 
     // Make predictions
     cout << "Making predictions." << endl;
@@ -419,9 +392,14 @@ void predict_from_UV(int M, int N, int K) {
 
 
 int main() {
-	cout<< "lf :" << 0.4 << endl;
-    complete_training(USER_SIZE, MOVIE_SIZE, 20, 0.01, 0.07, 400);
-    // predict_from_UV(USER_SIZE, MOVIE_SIZE, 20);
+    svd_ans result = complete_training(USER_SIZE, MOVIE_SIZE, LATENT_FACTORS,
+                                       LEARNING_RATE, REGULARIZATION, MAX_EPOCH);
+    predict_from_UV(USER_SIZE, MOVIE_SIZE, LATENT_FACTORS, result.U, result.V);
+
+
+    // MatrixXd U = read_matrix_from_file(M, K, U_filename);
+    // MatrixXd V = read_matrix_from_file(K, N, V_filename);
+    // predict_from_UV(USER_SIZE, MOVIE_SIZE, LATENT_FACTORS, U, V);
 
 
     return 0;

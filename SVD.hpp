@@ -39,12 +39,16 @@ double get_err(MatrixXd U, MatrixXd V,
               int* user_matrix, short* movie_matrix,
               short* date_matrix, char* rating_matrix, double size, double reg=0.0);
 
-svd_ans train_model(int M, int N, int K, double eta, double reg,
-                    int* user_matrix, short* movie_matrix,
-                    short* date_matrix, char* rating_matrix,
-                    int* user_matrix_val, short* movie_matrix_val,
-                    short* date_matrix_val, char* rating_matrix_val,
-                    int max_epochs);
+svd_ans train_model_from_UV(int M, int N, int K, double eta, double reg,
+                          int* user_matrix, short* movie_matrix,
+                          short* date_matrix, char* rating_matrix,
+                          int* user_matrix_val, short* movie_matrix_val,
+                          short* date_matrix_val, char* rating_matrix_val,
+                          MatrixXd U, MatrixXd V, int max_epochs);
+
+svd_ans complete_training(int M, int N, int K, double eta, double reg, int max_epochs);
+
+void predict_from_UV(int M, int N, int K, MatrixXd U, MatrixXd V);
 
 
 #endif
