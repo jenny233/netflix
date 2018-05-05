@@ -1,6 +1,6 @@
 #include "SVD.hpp"
 #include <string>
-#define PRED_FILENAME "predictions_5_2_100lf.dta"
+#define PRED_FILENAME "../predictions_5_2_100lf.dta"
 #define LANTENT_FACTORS 20
 void predict(int M, int N, int K) {
 
@@ -45,7 +45,7 @@ void predict(int M, int N, int K) {
 
     // Read in test data
     cout << "Reading testing input." << endl;
-    inFile.open("dataset5_unshuffled_all.dta");
+    inFile.open("../dataset5_unshuffled_all.dta");
     if (!inFile) {
         cout << "File not opened." << endl;
         exit(1);
