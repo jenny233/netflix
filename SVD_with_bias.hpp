@@ -12,6 +12,7 @@
 #include <random>       // std::default_random_engine
 #include <chrono>       // std::chrono::system_clock
 
+#define READ_IN_LINES 94362235
 #define TRAIN_SIZE  94362233
 // #define TRAIN_SIZE 500000
 #define VALID_SIZE  1965045
