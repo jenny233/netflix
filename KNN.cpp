@@ -12,13 +12,14 @@
 #include <cmath>
 #include <chrono>  
 
-#define NUM_USERS 458293
-#define NUM_MOVIES 17770
+#define NUM_USERS 458294
+#define NUM_MOVIES 17771
 #define NUM_RATINGS 98291669
 #define GLOBAL_AVG 3.512599976023349
 #define GLOBAL_OFF_AVG 0.0481786328365
 #define NUM_PROBE_RATINGS 1374739
 #define MAX_CHARS_PER_LINE 30
+#define TRAIN_SIZE 94362233
 
 // Minimum common neighbors required for decent prediction
 #define MIN_COMMON 16
@@ -85,10 +86,15 @@ struct s_neighbors {
 class KNN {
 private:
 	// um: for every user, stores (movie, rating) pairs.
-	vector<um_pair> um[NUM_USERS];
+	//vector<um_pair> um[NUM_USERS];
 
 	// mu: for every movie, stores (user, rating) pairs.
-	vector<mu_pair> mu[NUM_MOVIES];
+	//vector<mu_pair> mu[NUM_MOVIES];
+
+	//vector<int>* movies_rated_by_user = new vector<int>[NUM_MOVIES];
+	vector<um_pair> movies_rated_by_user[NUM_USERS];
+	//vector<int>* user_rated_movies = new vector<int>[NUM_USERS];
+	vector<mu_pair> user_rated_movies[NUM_MOVIES];
 
 
 	// Pearson coefficients for every movie pair
@@ -127,28 +133,39 @@ void KNN::loadData() {
 	int time;
 	int rating;
 
-	int j;
+	int j = -1;
 
 	int i = -1;
 	int last_seen = 0;
+	int last_seen2 = 0;
 
 	// Used for movie avgs
 	int num_ratings = 0;
 	int avg = 0;
 	
-	ifstream trainingDta("dataset1_unshuffled_all2.dta");
-	if (trainingDta.fail()) {
-		cout << "train.dta: Open failed.\n";
+	// populate user array with empty vectors 
+	/*
+	for (long i = 0; i < NUM_USERS; i++)
+	{
+		vector <int> m;
+		movies_rated_by_user[i] = m;
+		user_rated_movies[i] = m;
+	}*/
+
+	ifstream inFile;
+	inFile.open("dataset1_unshuffled_all2.dta");
+	if (!inFile) {
+		std::cout << "File not opened." << endl;
 		exit(-1);
 	}
-	cout << "starting" << endl;
-	while (getline(trainingDta, line)) {
-		memcpy(c_line, line.c_str(), MAX_CHARS_PER_LINE);
-		userId = atoi(strtok(c_line, " ")) - 1; // sub 1 for zero indexed
-		movieId = (short)atoi(strtok(NULL, " ")) - 1;
-		time = atoi(strtok(NULL, " "));
-		rating = (char)atoi(strtok(NULL, " "));
-
+	for (long k = 0; k < TRAIN_SIZE; k++) {
+		inFile >> userId;
+		inFile >> movieId;
+		inFile >> time;
+		inFile >> rating;
+		if (k % 100 == 0) {
+			cout << "\r" << to_string(k * 100 / TRAIN_SIZE) << "%%" << flush;
+		}
 		if (last_seen == userId) {
 			i++;
 		}
@@ -156,52 +173,29 @@ void KNN::loadData() {
 			i = 0;
 			last_seen = userId;
 		}
-
-		um[userId].push_back(um_pair());
-		um[userId][i].movie = movieId;
-		um[userId][i].rating = rating;
-	}
-	trainingDta.close();
-
-	cout << "Loaded um" << endl;
-
-	i = -1;
-	last_seen = 0;
-
-	// Repeat again, now for mu dta
-	ifstream trainingDtaMu("dataset1_unshuffled_all.dta");
-	if (trainingDtaMu.fail()) {
-		cout << "train-mu.dta: Open failed.\n";
-		exit(-1);
-	}
-	cout << "starting" << endl;
-	while (getline(trainingDtaMu, line)) {
-		memcpy(c_line, line.c_str(), MAX_CHARS_PER_LINE);
-		userId = atoi(strtok(c_line, " ")) - 1; // sub 1 for zero indexed
-		movieId = (short)atoi(strtok(NULL, " ")) - 1;
-		time = atoi(strtok(NULL, " "));
-		rating = (char)atoi(strtok(NULL, " "));
-
-		// If we're still on the same movie
-		if (last_seen == movieId) {
-			i++;
-			num_ratings += 1;
-			avg += rating;
+		if (last_seen2 == movieId) {
+			j++;
 		}
 		else {
-			i = 0;
-			last_seen = movieId;
-			movieAvg[movieId] = float(avg) / num_ratings;
-			num_ratings = 1;
-			avg = rating;
+			j = 0;
+			last_seen2 = movieId;
 		}
+		//um[userId].push_back(um_pair());
+		//um[userId][i].movie = movieId;
+		//um[userId][i].rating = rating;
 
-		mu[movieId].push_back(mu_pair());
-		mu[movieId][i].user = userId;
-		mu[movieId][i].rating = rating;
+		int movie = movieId;
+		int user = userId;
+		(movies_rated_by_user[userId]).push_back(um_pair());
+		movies_rated_by_user[userId][i].movie = movieId;
+		movies_rated_by_user[userId][i].rating = rating;
+		(user_rated_movies[movieId]).push_back(mu_pair());
+		user_rated_movies[movieId][j].user = userId;
+		user_rated_movies[movieId][j].rating = rating;
 	}
-	trainingDtaMu.close();
-	cout << "Loaded mu" << endl;
+	inFile.close();
+
+	cout << "Loaded um" << endl;
 
 }
 
@@ -223,11 +217,10 @@ void KNN::calcP() {
 
 	cout << "Calculating P" << endl;
 
-	rmse_last = 0;
-	rmse = 2.0;
+	//rmse_last = 0;
+	//rmse = 2.0;
 
 	float tmp_f;
-
 
 	// Compute intermediates
 	for (i = 0; i < NUM_MOVIES; i++) {
@@ -242,7 +235,7 @@ void KNN::calcP() {
 			tmp[z].n = 0;
 		}
 
-		size1 = mu[i].size();
+		size1 = user_rated_movies[i].size();
 
 		if ((i % 100) == 0) {
 			cout << i << endl;
@@ -250,21 +243,21 @@ void KNN::calcP() {
 
 		// For each user that rated movie i
 		for (u = 0; u < size1; u++) {
-			user = mu[i][u].user;
+			user = user_rated_movies[i][u].user;
 
-			size2 = um[user].size();
+			size2 = movies_rated_by_user[user].size();
 			// For each movie j rated by current user
 			for (m = 0; m < size2; m++) {
-				movie = um[user][m].movie; // id of movie j
+				movie = movies_rated_by_user[user][m].movie; // id of movie j
 
 				// We know that user rated both movie i AND movie j
 				// Now, update the pearson coeff for the pair XY
 
 				// Rating of movie i
-				rating_i = mu[i][u].rating;
+				rating_i = user_rated_movies[i][u].rating;
 
 				// Rating of movie j
-				rating_j = um[user][m].rating;
+				rating_j = movies_rated_by_user[user][m].rating;
 
 				// Increment rating of movie i
 				tmp[movie].x += rating_i;
@@ -332,7 +325,7 @@ void KNN::saveP() {
 	pfile.close();
 	cout << "P saved" << endl;
 }
-
+/*
 double KNN::predictRating(unsigned int movie, unsigned int user) {
 	double prediction = 0;
 	double denom = 0;
@@ -450,7 +443,7 @@ double KNN::predictRating(unsigned int movie, unsigned int user) {
 	return result;
 
 }
-
+*/
 int main() {
 	KNN *knn = new KNN();
 	knn->loadData();
