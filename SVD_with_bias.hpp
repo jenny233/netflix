@@ -32,26 +32,46 @@ struct svd_ans {
     double E_val;
 } ;
 
-VectorXd grad_U(VectorXd Ui, double Yij, VectorXd Vj, double reg, double eta);
+void populate_movies_to_array(int user_matrix[], short movie_matrix[], double rating_matrix[]);
 
-VectorXd grad_V(VectorXd Vj, double Yij, VectorXd Ui, double reg, double eta);
+double predict_score(VectorXd Ui, VectorXd Vj, VectorXd SumMWi, int r_u, double b_u, double b_i);
+
+VectorXd grad_U(VectorXd Ui, double Yij, VectorXd Vj, double reg, double eta, double score);
+
+VectorXd grad_V(VectorXd Vj, double Yij, VectorXd Ui, double reg, double eta, double score, double r_u, VectorXd SumMWi);
 
 double get_err(MatrixXd U, MatrixXd V,
               int* user_matrix, short* movie_matrix,
-              short* date_matrix, char* rating_matrix, double size, double reg=0.0);
+              short* date_matrix, double* rating_matrix,
+              double size, double reg, MatrixXd SumMW,
+              double* user_bias, double* movie_bias);
 
-MatrixXd read_matrix_from_file(int n_rows, int n_cols, string filename);
+MatrixXd read_matrix_from_file(int n_rows, int n_cols, string filename) {
+    MatrixXd matrix(n_rows, n_cols);
+    ifstream inFile;
+    inFile.open(filename);
+    if (!inFile) {
+      std::cout << "File not opened." << endl;
+      exit(1);
+    }
+    for (long r = 0; r < n_rows; r++) {
+      for (int c = 0; c < n_cols; c++) {
+          inFile >> matrix(r, c);
+      }
+    }
+    inFile.close();
+    return matrix;
+}
 
-svd_ans train_model_from_UV(int M, int N, int K, double eta, double reg,
-                          int* user_matrix, short* movie_matrix,
-                          short* date_matrix, char* rating_matrix,
-                          int* user_matrix_val, short* movie_matrix_val,
-                          short* date_matrix_val, char* rating_matrix_val,
-                          MatrixXd U, MatrixXd V, int max_epochs);
+void checkpoint_U_V(MatrixXd U, MatrixXd V, int epoch);
 
-svd_ans complete_training(int M, int N, int K, double eta, double reg, int max_epochs);
+svd_ans train_model_from_UV(double eta, double reg,
+                            int* user_matrix, short* movie_matrix,
+                            short* date_matrix, double* rating_matrix,
+                            int* user_matrix_val, short* movie_matrix_val,
+                            short* date_matrix_val, double* rating_matrix_val,
+                            MatrixXd U, MatrixXd V, MatrixXd Y, MatrixXd SumMW);
 
-void predict_from_UV(int M, int N, int K, MatrixXd U, MatrixXd V);
-
+svd_ans complete_training(double eta, double reg);
 
 #endif
