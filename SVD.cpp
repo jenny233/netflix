@@ -1,10 +1,11 @@
 #include "SVD.hpp"
 #include <string>
-#define LATENT_FACTORS 10
+#define LATENT_FACTORS 30
 #define REGULARIZATION 0.07
 #define LEARNING_RATE  0.05
 #define MAX_EPOCH      400
-#define PRED_FILENAME ("../predictions" + to_string(LATENT_FACTORS) + "lf_.dta")
+#define PRED_FILENAME ("../predictions_nobias_" + to_string(LATENT_FACTORS) + "lf_.dta")
+
 
 
 VectorXd grad_U(VectorXd Ui, double Yij, VectorXd Vj, double reg, double eta) {
@@ -80,7 +81,7 @@ svd_ans train_model_from_UV(int M, int N, int K, double eta, double reg,
                             short* date_matrix, double* rating_matrix,
                             int* user_matrix_val, short* movie_matrix_val,
                             short* date_matrix_val, double* rating_matrix_val,
-                            MatrixXd U, MatrixXd V, int max_epochs) {
+                            MatrixXd U, MatrixXd V, int max_epochs, int start_epoch) {
     /*
     Given a training data matrix Y containing rows (i, j, Y_ij)
     where Y_ij is user i's rating on movie j, learns an
@@ -126,7 +127,13 @@ svd_ans train_model_from_UV(int M, int N, int K, double eta, double reg,
 
     // Stochastic gradient descent
     ofstream outFile;
-    for (int epoch = 0; epoch < max_epochs; epoch++) {
+    int epoch = 0;
+    if (start_epoch > 0) {
+        epoch = start_epoch;
+    }
+    while (epoch < max_epochs) {
+
+        epoch++;
 
         cout << "Epoch " << epoch << ":" << endl;
         start_time = system_clock::now();
@@ -208,7 +215,7 @@ svd_ans train_model_from_UV(int M, int N, int K, double eta, double reg,
     return result;
 }
 
-svd_ans complete_training(int M, int N, int K, double eta, double reg, int max_epochs) {
+svd_ans complete_training(int M, int N, int K, double eta, double reg, int max_epochs, int start_epoch) {
     // Four arrays to store all the training data read in
     int* user_matrix = new int[TRAIN_SIZE];
     short* movie_matrix = new short[TRAIN_SIZE];
@@ -225,6 +232,18 @@ svd_ans complete_training(int M, int N, int K, double eta, double reg, int max_e
     ifstream inFile;
     ofstream outFile;
 
+    // Create U, V matrices
+    MatrixXd U;
+    MatrixXd V;
+    if (start_epoch > 0) {
+        cout << "Continuing training from U, V matrices." << endl;
+        U = read_matrix_from_file(USER_SIZE, LATENT_FACTORS, "../svd_U_matrix_30lf_150ep.txt");
+        V = read_matrix_from_file(LATENT_FACTORS, MOVIE_SIZE, "../svd_V_matrix_30lf_150ep.txt");
+    } else {
+        cout << "Randomly initializing new U, V matrices." << endl;
+        U = MatrixXd::Random(M, K);
+        V = MatrixXd::Random(K, N);
+    }
 
     // Read training data
     cout << "Reading training input." << endl;
@@ -270,14 +289,14 @@ svd_ans complete_training(int M, int N, int K, double eta, double reg, int max_e
     // Train SVD
     cout << "Training model." << endl;
 
-    MatrixXd U = MatrixXd::Random(M, K);
-    MatrixXd V = MatrixXd::Random(K, N);
+
+
     svd_ans result = train_model_from_UV(M, N, K, eta, reg,
                                         user_matrix, movie_matrix,
                                         date_matrix, rating_matrix,
                                         user_matrix_val, movie_matrix_val,
                                         date_matrix_val, rating_matrix_val,
-                                        U, V, max_epochs);
+                                        U, V, max_epochs, start_epoch);
 
     cout << "Final E_in: " << result.E_in << "  E_val: " << result.E_val << endl;
 
@@ -393,24 +412,12 @@ void predict_from_UV(int M, int N, int K, MatrixXd U, MatrixXd V) {
 
 int main() {
 
-    // To do training from the very beginning
+    // Training
     svd_ans result = complete_training(USER_SIZE, MOVIE_SIZE, LATENT_FACTORS,
-                                       LEARNING_RATE, REGULARIZATION, MAX_EPOCH);
+                                       LEARNING_RATE, REGULARIZATION, MAX_EPOCH, 150);
     predict_from_UV(USER_SIZE, MOVIE_SIZE, LATENT_FACTORS, result.U, result.V);
 
 
-
-    // To do training from saved U V matrices
-
-    // MatrixXd U = read_matrix_from_file(M, K, U_filename);
-    // MatrixXd V = read_matrix_from_file(K, N, V_filename);
-    // svd_ans result = train_model_from_UV(M, N, K, eta, reg,
-    //                                     user_matrix, movie_matrix,
-    //                                     date_matrix, rating_matrix,
-    //                                     user_matrix_val, movie_matrix_val,
-    //                                     date_matrix_val, rating_matrix_val,
-    //                                     U, V, max_epochs);
-    // predict_from_UV(USER_SIZE, MOVIE_SIZE, LATENT_FACTORS, result.U, result.V);
 
 
 

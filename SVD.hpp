@@ -46,9 +46,9 @@ svd_ans train_model_from_UV(int M, int N, int K, double eta, double reg,
                           short* date_matrix, char* rating_matrix,
                           int* user_matrix_val, short* movie_matrix_val,
                           short* date_matrix_val, char* rating_matrix_val,
-                          MatrixXd U, MatrixXd V, int max_epochs);
+                          MatrixXd U, MatrixXd V, int max_epochs, int start_epoch);
 
-svd_ans complete_training(int M, int N, int K, double eta, double reg, int max_epochs);
+svd_ans complete_training(int M, int N, int K, double eta, double reg, int max_epochs, int start_epoch = 0);
 
 void predict_from_UV(int M, int N, int K, MatrixXd U, MatrixXd V);
 
