@@ -1,11 +1,11 @@
 #include "SVD++.hpp"
 #include <string>
 #include <cmath>
-#define LATENT_FACTORS 3
+#define LATENT_FACTORS 30
 #define REGULARIZATION 0.02
 #define LEARNING_RATE  0.005
 #define MAX_EPOCH      400
-#define PRED_FILENAME ("../predictions" + to_string(LATENT_FACTORS) + "lf_.dta")
+#define PRED_FILENAME ("../predictions_svd++_" + to_string(LATENT_FACTORS) + "lf_.dta")
 
 /*
  * IMPORTANT:
@@ -137,16 +137,16 @@ double get_err(double** U, double** V,
 }
 
 
-void predict(double** U, double** V, double** SumMW, double* user_bias, 
+void predict(double** U, double** V, double** SumMW, double* user_bias,
 			double* movie_bias, int* user_matrix_test, short* movie_matrix_test, short* date_matrix_test)
 {
-	cout<<"  printing checkpoint"<<endl;
+	cout<<"printing checkpoint"<<endl;
     ofstream outFile;
 	outFile.open(PRED_FILENAME);
     // Make predictions
     for (long r=0; r<TEST_SIZE; r++) {
-        int i = user_matrix_test[r];
-        int j = movie_matrix_test[r];
+        int i = user_matrix_test[r] - 1;
+        int j = movie_matrix_test[r] - 1;
          // Update U[i], V[j]
 		double sqrt_r = 0.0;
 		// calculate R(u) ^ -1/2
@@ -161,7 +161,7 @@ void predict(double** U, double** V, double** SumMW, double* user_bias,
     }
     outFile.close();
 
-   
+
 }
 
 void checkpoint_U_V(double** U, double** V, int epoch) {
@@ -226,7 +226,7 @@ svd_ans train_model_from_UV(double eta, double reg,
 
     double E_in, E_val;
     double init_E_in = 100, init_E_val = 100;
-	
+
 
 
 
@@ -243,7 +243,7 @@ svd_ans train_model_from_UV(double eta, double reg,
         // Checkpoint every 10 epochs
 		if (epoch % 10 == 0 ) {
             predict( U, V, SumMW, user_bias, movie_bias,user_matrix_test, movie_matrix_test, date_matrix_test);
-            
+
 		}
 
 		// Loop through the users, i is the user id - 1
@@ -443,6 +443,7 @@ svd_ans complete_training(double eta, double reg) {
 	cout<<" Reading out test data " <<endl;
 	// Read in training data
     ifstream inFile_test;
+	inFile_test.open("../dataset5_unshuffled_all.dta");
     int* user_matrix_test = new int[TEST_SIZE];
     short* movie_matrix_test = new short[TEST_SIZE];
     short* date_matrix_test = new short[TEST_SIZE];
