@@ -140,7 +140,7 @@ double get_err(double** U, double** V,
 void predict(double** U, double** V, double** SumMW, double* user_bias, 
 			double* movie_bias, int* user_matrix_test, short* movie_matrix_test, short* date_matrix_test)
 {
-	cout<<"  printing checkpoint"<<endl
+	cout<<"  printing checkpoint"<<endl;
     ofstream outFile;
 	outFile.open(PRED_FILENAME);
     // Make predictions
