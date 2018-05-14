@@ -1,7 +1,7 @@
 #include "SVD++.hpp"
 #include <string>
 #include <cmath>
-#define LATENT_FACTORS 30
+#define LATENT_FACTORS 3
 #define REGULARIZATION 0.02
 #define LEARNING_RATE  0.005
 #define MAX_EPOCH      400
@@ -42,7 +42,7 @@ void populate_movies_to_array(int user_matrix[], short movie_matrix[], double ra
 	for (long long r = 0; r < TRAIN_SIZE ; r++)
 	{
         // Progress bar
-        if (r % 100000 == 0) {
+        if (r % 100 == 0) {
             end_time = system_clock::now();
             auto duration = duration_cast<seconds>( end_time - start_time ).count();
             cout << "\r" << to_string(r * 100 / TRAIN_SIZE) << "%%"
@@ -137,6 +137,32 @@ double get_err(double** U, double** V,
 }
 
 
+void predict(double** U, double** V, double** SumMW, double* user_bias, 
+			double* movie_bias, int* user_matrix_test, short* movie_matrix_test, short* date_matrix_test)
+{
+	cout<<"  printing checkpoint"<<endl
+    ofstream outFile;
+	outFile.open(PRED_FILENAME);
+    // Make predictions
+    for (long r=0; r<TEST_SIZE; r++) {
+        int i = user_matrix_test[r];
+        int j = movie_matrix_test[r];
+         // Update U[i], V[j]
+		double sqrt_r = 0.0;
+		// calculate R(u) ^ -1/2
+		int sz = (movies_rated_by_user[i]).size();
+		// Want to make sure it is not 0 before we divide and take the square root
+		if (sz > 0)
+		{
+			sqrt_r = 1 / sqrt(sz);
+		}
+		double prediction = predict_score( U, V, SumMW, i, j, user_bias[i], movie_bias[j], sqrt_r);
+        outFile << prediction << endl;
+    }
+    outFile.close();
+
+   
+}
 
 void checkpoint_U_V(double** U, double** V, int epoch) {
     ofstream outFile;
@@ -180,7 +206,9 @@ svd_ans train_model_from_UV(double eta, double reg,
                             short* date_matrix, double* rating_matrix,
                             int* user_matrix_val, short* movie_matrix_val,
                             short* date_matrix_val, double* rating_matrix_val,
-                            double** U, double** V, double** y, double** SumMW) {
+                            double** U, double** V, double** y, double** SumMW,
+                            int* user_matrix_test, short* movie_matrix_test,
+                            short* date_matrix_test) {
     /*
     Given a training data Y_ij is user i's rating on movie j, learns an
     USER_SIZE x LATENT_FACTORS matrix U and MOVIE_SIZE x LATENT_FACTORS matrix V such that rating Y_ij is approximated
@@ -198,6 +226,9 @@ svd_ans train_model_from_UV(double eta, double reg,
 
     double E_in, E_val;
     double init_E_in = 100, init_E_val = 100;
+	
+
+
 
     // Initialize timers
     system_clock::time_point start_time, end_time;
@@ -211,7 +242,8 @@ svd_ans train_model_from_UV(double eta, double reg,
 
         // Checkpoint every 10 epochs
 		if (epoch % 10 == 0 ) {
-            checkpoint_U_V(U, V, epoch);
+            predict( U, V, SumMW, user_bias, movie_bias,user_matrix_test, movie_matrix_test, date_matrix_test);
+            
 		}
 
 		// Loop through the users, i is the user id - 1
@@ -408,6 +440,24 @@ svd_ans complete_training(double eta, double reg) {
     cout << endl;
     inFile.close();
 
+	cout<<" Reading out test data " <<endl;
+	// Read in training data
+    ifstream inFile_test;
+    int* user_matrix_test = new int[TEST_SIZE];
+    short* movie_matrix_test = new short[TEST_SIZE];
+    short* date_matrix_test = new short[TEST_SIZE];
+    int garbage_zero_rating;
+    for (long i=0; i<TEST_SIZE; i++) {
+        inFile_test >> user_matrix_test[i];
+        inFile_test >> movie_matrix_test[i];
+        inFile_test >> date_matrix_test[i];
+        inFile_test >> garbage_zero_rating;
+        if (i % 100 == 0) {
+            cout << "\r" << to_string(i * 100 / TEST_SIZE) << "%%" << flush;
+        }
+    }
+    cout << endl;
+    inFile_test.close();
 
 
     // Create U matrix
@@ -451,10 +501,14 @@ svd_ans complete_training(double eta, double reg) {
                                         date_matrix, rating_matrix,
                                         user_matrix_val, movie_matrix_val,
                                         date_matrix_val, rating_matrix_val,
-                                        U, V, y, SumMW);
+                                        U, V, y, SumMW,user_matrix_test,
+                                        movie_matrix_test, date_matrix_test);
 
     cout << "Final E_in: " << result.E_in << "  E_val: " << result.E_val << endl;
 
+	delete[] user_matrix_test;
+    delete[] movie_matrix_test;
+    delete[] date_matrix_test;
     delete[] rating_matrix;
 	delete[] user_matrix;
 	delete[] movie_matrix;
