@@ -1,11 +1,11 @@
 #include "SVD++.hpp"
 #include <string>
 #include <cmath>
-#define LATENT_FACTORS 30
-#define REGULARIZATION 0.02
-#define LEARNING_RATE  0.005
+#define LATENT_FACTORS 200
+#define REGULARIZATION 0.1
+#define LEARNING_RATE  0.007
 #define MAX_EPOCH      400
-#define PRED_FILENAME ("../predictions_svd++_" + to_string(LATENT_FACTORS) + "lf_.dta")
+#define PRED_FILENAME ("../predictions_svd++_" + to_string(LATENT_FACTORS) + "lf_5_16.dta")
 
 /*
  * IMPORTANT:
@@ -350,7 +350,7 @@ svd_ans train_model_from_UV(double eta, double reg,
             break;
         }
         init_E_val = E_val;
-        // eta = 0.9 * eta;
+        eta *= (0.9 + 0.1 * rand()/RAND_MAX);
     }
     cout << endl;
 
