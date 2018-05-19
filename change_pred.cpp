@@ -11,6 +11,14 @@
 // #define WITH_BIAS false
 // #define PRED_FILENAME "../predictions_nobias_20lf.dta"
 
+void predict_all_zeros() {
+    ofstream outFile;
+    outFile.open("../zero_predictions.dta");
+    for (long r = 0; r < TEST_SIZE; r++) {
+        outFile << 0 << endl;
+    }
+    outFile.close();
+}
 
 void predict() {
 
@@ -116,5 +124,6 @@ void predict() {
 }
 int main()
 {
-	 predict();
+	 // predict();
+    predict_all_zeros();
 }
