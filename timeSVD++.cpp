@@ -1,9 +1,11 @@
 #include "timeSVD++.h"
 #include <string>
 #include <cmath>
-#define LATENT_FACTORS 2
-#define REGULARIZATION 0.1
-#define LEARNING_RATE  0.007
+#define LATENT_FACTORS 30
+#define REGULARIZATION 0.007
+#define LEARNING_RATE  0.005
+#define reg_alpha  0.00001
+#define eta_alpha  0.0004
 #define MAX_EPOCH      400
 #define PRED_FILENAME ("../predictions_svd++_" + to_string(LATENT_FACTORS) + "lf_5_16.dta")
 
@@ -27,7 +29,7 @@ vector<int>* times_of_user_ratings = new vector<int> [USER_SIZE];
 
 // Create vector that holds a map for the deviations of time 
 vector<map<int, double> > Dev;
-vector<map<int,double>> Bu_t;
+vector<map<int,double> > Bu_t;
 void calculate_mean_times(double* Tu)
 {
 	/* 
@@ -78,9 +80,8 @@ double CalDev( int user, int timeArg, double* Tu)
 	 */
 	if(Dev[user].count(timeArg) != 0)
 	{
-		return Dev[user] [timeArg];
+		return Dev[user][timeArg];
 	}
-
 	double tmp = sign(timeArg - Tu[user]) * pow(double(abs(timeArg - Tu[user])),0.4);
 	Dev[user][timeArg] = tmp;
 	return tmp;
@@ -200,11 +201,17 @@ double get_err(double** U, double** V,
 			{
 				sqrt_r = 1 / sqrt(sz);
 			}
+			if (i < 0)
+			{
+				cout<<"hi"<<endl;
+				continue;
+			}
             double score = predict_score(U, V, SumMW, i, j, time,bu[i], bi[j], sqrt_r, Bi_Bin[j][CalBin(time)], Alpha_u[i], Tu);
 
 			err += pow(Yij - score , 2.0);
 		}
 	}
+	cout<<endl;
     // Return the RMSE
     return sqrt(err / size);
 }
@@ -321,9 +328,9 @@ svd_ans train_model_from_UV(double eta, double reg,
 		map<int,double> tmp;
 		for (unsigned j = 0; j < times_of_user_ratings[i].size(); j++)
 		{
-			if(tmp.count((times_of_user_ratings[USER_SIZE])[j]) == 0)
+			if(tmp.count((times_of_user_ratings[i])[j]) == 0)
 			{
-				tmp[(times_of_user_ratings[USER_SIZE])[j]] = 0.0000001;
+				tmp[(times_of_user_ratings[i])[j]] = 0.0000001;
 			}
 			else 
 			{
@@ -332,7 +339,11 @@ svd_ans train_model_from_UV(double eta, double reg,
 		}
 		Bu_t.push_back(tmp);
 	}
-	
+	for ( int i = 0;  i < USER_SIZE; i++)
+	{
+		map<int,double> tmp;
+		Dev.push_back(tmp);
+	}
 	
 	
     for (int epoch = 0; epoch < MAX_EPOCH; epoch++) {
@@ -344,10 +355,8 @@ svd_ans train_model_from_UV(double eta, double reg,
 		if (epoch % 10 == 0 ) {
             predict( U, V, SumMW, user_bias, movie_bias,user_matrix_test, movie_matrix_test, date_matrix_test, Bi_Bin, Tu, Alpha_u);
 		}
-
 		// Loop through the users, i is the user id - 1
         for (long i = 0; i < USER_SIZE; i++) {
-
             // Progress bar
             if (i % 1000 == 0) {
                 end_time = system_clock::now();
@@ -355,7 +364,6 @@ svd_ans train_model_from_UV(double eta, double reg,
                 cout << "\r" << to_string(i * 100 / USER_SIZE) << "%%"
                      << "  Time: " << duration / 60 << "m" << duration % 60 << "s" << flush;
             }
-
             // Update U[i], V[j]
             double sqrt_r = 0.0;
 			// calculate R(u) ^ -1/2
@@ -380,7 +388,7 @@ svd_ans train_model_from_UV(double eta, double reg,
 				}
 				SumMW[i][k] = sumy;
 			}
-
+		
 			// Update the U and V matricies using the gradient
             // Loop through all the movies rated by a user
 			for (int t = 0; t < sz; t++)
@@ -392,7 +400,13 @@ svd_ans train_model_from_UV(double eta, double reg,
 				// get the predicted score
                 double score = predict_score(U, V, SumMW, i, j, time, bu[i], bi[j], sqrt_r, Bi_Bin[j][CalBin(time)], Alpha_u[i],Tu);
                 double error = Yij - score;
-
+                
+                bu[i] += reg * (error - eta * bu[i]);
+                bi[j] += reg * (error - eta * bi[j]);
+                Bi_Bin[j][CalBin(time)] += reg * (error - eta * Bi_Bin[j][CalBin(time)]);
+                Alpha_u[i] += reg_alpha * (error * CalDev(i,time,Tu) - eta_alpha * Alpha_u[i]);
+                Bu_t[i][time] += reg * ( error - eta * Bu_t[i][time]);                
+                
                 // Update U for user i and V for movie j
                 for(int k = 0; k < LATENT_FACTORS; k++){
                     double uf = U[i][k]; // The U latent factor for this user i
@@ -402,7 +416,6 @@ svd_ans train_model_from_UV(double eta, double reg,
                     tmpSum[k] += error * sqrt_r * mf;
                 }
 			}
-
 			// Update the y factors for each movie a user rated
 			for (int t = 0; t < sz; t++)
 			{
@@ -429,13 +442,13 @@ svd_ans train_model_from_UV(double eta, double reg,
 				SumMW[i][k] = sumy;
 			}
 		}
-
         // At end of epoch, print E_in, E_val
         srand ( unsigned ( time(0) ) );
         long rand_n = rand() % (TRAIN_SIZE-1000001);
         E_in = get_err(U, V, user_matrix+rand_n, movie_matrix+rand_n,
                             date_matrix+rand_n, rating_matrix+rand_n,
-                            1000000, reg, SumMW,bu,bi, Bi_Bin, Tu, Alpha_u);
+                            1000000, reg, SumMW,bu, bi, Bi_Bin, Tu, Alpha_u);
+        cout<<E_in<<endl;
         E_val = get_err(U, V, user_matrix_val, movie_matrix_val,
                               date_matrix_val, rating_matrix_val,
                               VALID_SIZE, reg,SumMW, bu, bi, Bi_Bin, Tu, Alpha_u);
@@ -477,28 +490,7 @@ svd_ans complete_training(double eta, double reg) {
     ofstream outFile;
 	ifstream inFile_bias;
 
-	// Read in bias /////
-	cout << "Reading bias data" << endl;
-	inFile_bias.open("../bias_checkpoint.txt");
-    if (!inFile) {
-        std::cout << "File not opened." << endl;
-        exit(1);
-    }
-    int garbage_zero_bias;
-    inFile_bias >> garbage_zero_bias;
-	for (long i = 0; i < USER_SIZE; i++) {
-        inFile_bias >> user_bias[i];
-        if (i % 100 == 0) {
-            cout << "\r" << "Users: " << to_string(i * 100 / USER_SIZE) << "%%" << flush;
-        }
-    }
-    inFile_bias >> garbage_zero_bias;
-	for (long i = 0; i <= MOVIE_SIZE; i++) {
-        inFile_bias >> movie_bias[i];
-        if (i % 100 == 0) {
-            cout << "\r" << "Movies: " << to_string(i * 100 / MOVIE_SIZE) << "%%" << flush;
-        }
-    }
+	
     // Read training data
     cout << "\nReading training input." << endl;
     inFile.open("../dataset1_shuffled_all.dta");
@@ -578,10 +570,10 @@ svd_ans complete_training(double eta, double reg) {
     // Create alpha array
     double* Alpha_u = new double [USER_SIZE];
     // Create bi_bin, which represents a movies ratings over time
-    double** Bi_Bin = new double* [BIN_NUMBER];
+    double** Bi_Bin = new double* [MOVIE_SIZE];
     // Create Tu, which will hold the mean movies, I will make index 0 be user 1
 	double* Tu = new double [USER_SIZE];
-	cout<<"hi"<<endl;
+	
     // Initialize the matrices
     for(int j = 0; j < MOVIE_SIZE; j++){
 		bi[j] = 0.0;
@@ -593,15 +585,19 @@ svd_ans complete_training(double eta, double reg) {
             V[j][k] = 0.1 * (rand() / (RAND_MAX + 1.0)) / sqrt(LATENT_FACTORS);
             y[j][k] = 0;
         }
-		for (int k = 0; k < BIN_NUMBER; k++)
-		{
-			Bi_Bin[j][k] = 0;
-		}
     }
-    cout<<"hi2"<<endl;
+    
+    for (int i = 0; i < MOVIE_SIZE; i++)
+    { 
+		for (int k = 0; k < BIN_NUMBER; k++)
+			{
+				Bi_Bin[i][k] = 0;
+			}
+	}	
+			
     for(int i = 0; i < USER_SIZE; i++){
 		bu[i] = 0.0;
-		Alpha_u[i] = 0;
+		Alpha_u[i] = 0.0;
         U[i] = new double[LATENT_FACTORS];
         SumMW[i] = new double[LATENT_FACTORS];
         for(int k = 0; k < LATENT_FACTORS; k++){
@@ -645,6 +641,12 @@ svd_ans complete_training(double eta, double reg) {
     for (long r = 0; r < MOVIE_SIZE; r++) { delete[] V[r]; }
     for (long r = 0; r < MOVIE_SIZE; r++) { delete[] y[r]; }
     for (long r = 0; r < USER_SIZE;  r++) { delete[] SumMW[r]; }
+    for (long r = 0; r < USER_SIZE;  r++) { delete[] Bi_Bin[r]; }
+    
+    delete[] bi;
+    delete[] bu;
+    delete[] Alpha_u;
+    delete[] Tu;
     delete[] U;
     delete[] V;
     delete[] y;
