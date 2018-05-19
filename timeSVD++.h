@@ -14,14 +14,22 @@
 
 // Max number of int is 65535
 #define TRAIN_SIZE  94362233   // Use long while looping
+<<<<<<< HEAD
 //#define TRAIN_SIZE  10000000
+=======
+// #define TRAIN_SIZE 500000
+>>>>>>> c9538ea570368191e1a713f47d5706fcb5230e41
 #define VALID_SIZE  1965045    // Use long while looping
 #define TEST_SIZE  2749898     // Use long while looping
 #define USER_SIZE  458293      // Use long while looping
 #define TIME_SIZE   2243
 #define MOVIE_SIZE  17770      // Use int while looping
 #define TRAINING_DATA_AVERAGE 3.60861
+<<<<<<< HEAD
 #define BIN_NUMBER 30
+=======
+#define BIN_NUMBER 1
+>>>>>>> c9538ea570368191e1a713f47d5706fcb5230e41
 #define sign(n) (n==0? 0 : (n<0?-1:1))
 using namespace std;
 using namespace std::chrono;
