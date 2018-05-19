@@ -17,8 +17,6 @@
  */
 
 // Two arrays for holding the user and movie bias
-double* user_bias = new double[USER_SIZE];
-double* movie_bias = new double[MOVIE_SIZE];
 
 // Arrays of vectors that store movie indices (not ids) rated by each user
 vector<int>* movies_rated_by_user = new vector<int> [USER_SIZE];
@@ -353,7 +351,7 @@ svd_ans train_model_from_UV(double eta, double reg,
 		
         // Checkpoint every 10 epochs
 		if (epoch % 10 == 0 ) {
-            predict( U, V, SumMW, user_bias, movie_bias,user_matrix_test, movie_matrix_test, date_matrix_test, Bi_Bin, Tu, Alpha_u);
+            predict( U, V, SumMW, bu, bi,user_matrix_test, movie_matrix_test, date_matrix_test, Bi_Bin, Tu, Alpha_u);
 		}
 		// Loop through the users, i is the user id - 1
         for (long i = 0; i < USER_SIZE; i++) {
@@ -459,6 +457,7 @@ svd_ans train_model_from_UV(double eta, double reg,
         // If E_val doesn't decrease, stop early
         if (init_E_val <= E_val) {
             cout<<"E_val is increasing! Printing checkpoint"<<endl;
+            predict( U, V, SumMW, bu, bi,user_matrix_test, movie_matrix_test, date_matrix_test, Bi_Bin, Tu, Alpha_u);
             checkpoint_U_V(U, V, epoch);
             break;
         }
@@ -466,7 +465,7 @@ svd_ans train_model_from_UV(double eta, double reg,
         eta *= (0.9 + 0.1 * rand()/RAND_MAX);
     }
     cout << endl;
-
+	predict( U, V, SumMW, bu, bi,user_matrix_test, movie_matrix_test, date_matrix_test, Bi_Bin, Tu, Alpha_u);
     svd_ans result = {U, V, E_in, E_val};
     return result;
 }
@@ -488,7 +487,6 @@ svd_ans complete_training(double eta, double reg) {
 	// IO
     ifstream inFile;
     ofstream outFile;
-	ifstream inFile_bias;
 
 	
     // Read training data
@@ -509,7 +507,6 @@ svd_ans complete_training(double eta, double reg) {
     }
     cout << endl;
     inFile.close();
-    inFile_bias.close();
 
 	populate_movies_to_array(user_matrix, movie_matrix, rating_matrix, date_matrix);
 
@@ -641,7 +638,7 @@ svd_ans complete_training(double eta, double reg) {
     for (long r = 0; r < MOVIE_SIZE; r++) { delete[] V[r]; }
     for (long r = 0; r < MOVIE_SIZE; r++) { delete[] y[r]; }
     for (long r = 0; r < USER_SIZE;  r++) { delete[] SumMW[r]; }
-    for (long r = 0; r < USER_SIZE;  r++) { delete[] Bi_Bin[r]; }
+    for (long r = 0; r < MOVIE_SIZE;  r++) { delete[] Bi_Bin[r]; }
     
     delete[] bi;
     delete[] bu;
