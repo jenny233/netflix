@@ -22,4 +22,11 @@
 using namespace std;
 using namespace std::chrono;
 
+struct svd_ans {
+    double** U;
+    double** V;
+    double E_in;
+    double E_val;
+} ;
+svd_ans complete_training(double eta, double reg);
 #endif

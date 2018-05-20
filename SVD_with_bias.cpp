@@ -1,15 +1,21 @@
-#include "SVD_with_bias.hpp"
+#include "b.h"
 #include <string>
 #include <cmath>
-#define LATENT_FACTORS 30
-#define REGULARIZATION 0.02
-#define LEARNING_RATE  0.005
+#define LATENT_FACTORS 1000
+#define REGULARIZATION 0.015
+#define LEARNING_RATE  0.007
 #define MAX_EPOCH      400
-#define PRED_FILENAME ("../predictions" + to_string(LATENT_FACTORS) + "lf_.dta")
+#define REG_BIAS       0.005
+#define PRED_FILENAME ("../predictions_svd++_" + to_string(LATENT_FACTORS) + "lf_5_16.dta")
 
-// Two arrays for holding the user and movie bias
-double* user_bias = new double[USER_SIZE + 1];
-double* movie_bias = new double[MOVIE_SIZE + 1];
+/*
+ * IMPORTANT:
+ * All arrays and matrices hold user and movie indices instead of ids
+ * userId = user index + 1
+ * Except for the data read from the training, validation, testing files.
+ */
+
+// Arrays of vectors that store movie indices (not ids) rated by each user
 vector<int>* movies_rated_by_user = new vector<int> [USER_SIZE];
 vector<int>* ratings_by_user = new vector<int> [USER_SIZE];
 
@@ -19,7 +25,7 @@ void populate_movies_to_array(int user_matrix[], short movie_matrix[], double ra
 	 * pushes back the movies that that user has rated in the
 	 * movies _rated by_user_array.
 	 */
-	 cout<< "populating user rating arrays"<<endl;
+	cout<< "Populating user rating arrays"<<endl;
 	// populate user array with empty vectors
 	for (long i = 0; i < USER_SIZE; i++)
 	{
@@ -28,100 +34,91 @@ void populate_movies_to_array(int user_matrix[], short movie_matrix[], double ra
 		ratings_by_user[i] = m;
 	}
 	// Fill the array of vectors with the movies that each user rated
-	for (long long i = 0; i < READ_IN_LINES ; i++)
+    system_clock::time_point start_time, end_time;
+    start_time = system_clock::now();
+	for (long long r = 0; r < TRAIN_SIZE ; r++)
 	{
-		int movie = movie_matrix[i];
-		int rating = rating_matrix[i] ;
-		{
-			(movies_rated_by_user[user_matrix[i]]).push_back(movie);
-			(ratings_by_user[user_matrix[i]]).push_back(rating);
-		}
+        // Progress bar
+        if (r % 100 == 0) {
+            end_time = system_clock::now();
+            auto duration = duration_cast<seconds>( end_time - start_time ).count();
+            cout << "\r" << to_string(r * 100 / TRAIN_SIZE) << "%%"
+                 << "  Time: " << duration / 60 << "m" << duration % 60 << "s" << flush;
+        }
+
+        long userId = user_matrix[r];
+		int movieId = movie_matrix[r];
+		int rating = rating_matrix[r];
+		(movies_rated_by_user[userId - 1]).push_back(movieId - 1);
+		(ratings_by_user[userId - 1]).push_back(rating);
 	}
+    cout << endl;
 }
 
-
-double predict_score(VectorXd Ui, VectorXd Vj, VectorXd SumMWi, int r_u, double b_u, double b_i) {
-	/*
-	 * This function perdicts the score of a rating for a user and movie
-	 * using the implicit factors. It incorporates the Y matrix and the
-	 * biases
-	 */
-	double temp = 0.0;
-    for (int i = 0; i < LATENT_FACTORS; i++)
-    {
-		 temp = (Ui(i) + SumMWi(i) * r_u) * Vj(i);
-	}
-	double score = TRAINING_DATA_AVERAGE + b_u + b_i + temp;
-	if(score > 5)
-	{
-		score = 5;
-	}
-	if (score < 1)
-	{
-		score = 1;
-	}
-	return score;
-}
-
-
-VectorXd grad_U(VectorXd Ui, double Yij, VectorXd Vj, double reg, double eta, double score) {
+double predict_score(double** U, double** V,
+                     int i, int j, double b_u, double b_i){
     /*
-    Takes as input Ui (the ith row of U), a training point Yij, the column
-    vector Vj (jth column of V^T), reg (the regularization parameter lambda),
-    and eta (the learning rate).
+    PARAMETERS
+    U:      USER_SIZE by LATENT_FACTORS matrix
+    V:      MOVIE_SIZE by LATENT_FACTORS matrix
+    SumMW:  USER_SIZE by LATENT_FACTORS matrix
+    i:      user index, userId - 1
+    j:      movie index, movieId - 1
+    b_u:    bias from the user
+    b_i:    bias from the movie
+    sqrt_r: (number of movies rated by this user)^-1/2
 
-    Returns the gradient of the regularized loss function with
-    respect to Ui multiplied by eta.
+    RETURNS
+    prediction for this user and movie combo
     */
-    return eta * ((Yij - score) * Vj - reg * Ui);
-    // return (1-reg * eta) * Ui + eta * (Yij - score) * Vj;
+
+    double tmp = 0.0;
+    for(int k = 0; k < LATENT_FACTORS; k++){
+        tmp += (U[i][k]) * V[j][k];
+    }
+    double score = TRAINING_DATA_AVERAGE + b_u + b_i + tmp;
+    if(score > 5){
+        score = 5;
+    }
+    if(score < 1){
+        score = 1;
+    }
+    return score;
 }
 
-VectorXd grad_V(VectorXd Vj, double Yij, VectorXd Ui, double reg, double eta, double score, double r_u, VectorXd SumMWi) {
-    /*
-    Takes as input the column vector Vj (jth column of V^T), a training point Yij,
-    Ui (the ith row of U), reg (the regularization parameter lambda),
-    and eta (the learning rate).
-
-    Returns the gradient of the regularized loss function with
-    respect to Vj multiplied by eta.
-    */
-    return eta * ((Yij - score) * (Ui + r_u * SumMWi) - reg * Vj);
-    // return (1 - reg * eta) * Vj + eta * (Ui + r_u * SumMWi) * (Yij - score);
-}
-
-double get_err(MatrixXd U, MatrixXd V,
-              int* user_matrix, short* movie_matrix,
-              short* date_matrix, double* rating_matrix,
-              double size, double reg, MatrixXd SumMW,
-              double* user_bias, double* movie_bias) {
+double get_err(double** U, double** V,
+               int* user_matrix, short* movie_matrix,
+               short* date_matrix, double* rating_matrix,
+               double size, double reg,
+               double* user_bias, double* movie_bias) {
 
     /*
-    Takes as input a matrix Y of triples (i, j, Y_ij) where i is the index of a user,
-    j is the index of a movie, and Y_ij is user i's rating of movie j and
-    user/movie matrices U and V.
+    PARAMETERS
+    U:          USER_SIZE by LATENT_FACTORS matrix
+    V:          MOVIE_SIZE by LATENT_FACTORS matrix
+    (user/movie/date/rating)_matrix:
+                the dataset for error to be calculated oncould be training or validation
+    size:       the size of said dataset
+    reg:        regularization parameter
+    SumMW:      USER_SIZE by LATENT_FACTORS matrix
+    user_bias:  bias from the user
+    movie_bias: bias from the movie
 
-    Returns the mean regularized squared-error of predictions made by
-    estimating Y_{ij} as the dot product of the ith row of U and the jth column of V^T.
+    RETURNS
+    The mean squared-error of predictions
+
+
+    Compute mean squared error on each data point; include
+    regularization penalty in error calculations.
+    We first compute the total squared squared error
     */
-    // Compute mean squared error on each data point in Y; include
-    // regularization penalty in error calculations.
-    // We first compute the total squared squared error
-
     double err = 0.0;
 	{
-		double r_u = 0.0;
 		for (long r=0; r<size; r++) {
-			int i = user_matrix[r];
-			int j = movie_matrix[r];
+			int i = user_matrix[r] - 1;  // user index
+			int j = movie_matrix[r] - 1; // movie index
 			double Yij = rating_matrix[r];
-			int sz = (movies_rated_by_user[i]).size();
-			// Want to make sure it is not 0 before we divide and take the square root
-			if (sz > 0)
-			{
-				r_u = 1 / sqrt(sz);
-			}
-			double score = predict_score(U.row(i-1), V.col(j-1), SumMW.row(i-1), r_u, user_bias[i], movie_bias[j]);
+            double score = predict_score(U, V, i, j, user_bias[i], movie_bias[j]);
 			err += pow(Yij - score , 2.0);
 		}
 	}
@@ -130,21 +127,56 @@ double get_err(MatrixXd U, MatrixXd V,
 }
 
 
+void predict(double** U, double** V, double* user_bias,
+			double* movie_bias, int* user_matrix_test, short* movie_matrix_test, short* date_matrix_test)
+{
+	cout<<"printing checkpoint"<<endl;
+    ofstream outFile;
+	outFile.open(PRED_FILENAME);
+    // Make predictions
+    for (long r=0; r<TEST_SIZE; r++) {
+        int i = user_matrix_test[r] - 1;
+        int j = movie_matrix_test[r] - 1;
+		double prediction = predict_score( U, V, i, j, user_bias[i], movie_bias[j]);
+        outFile << prediction << endl;
+    }
+    outFile.close();
 
-void checkpoint_U_V(MatrixXd U, MatrixXd V, int epoch) {
+
+}
+
+void checkpoint_U_V(double** U, double** V, int epoch) {
     ofstream outFile;
     cout<<"  printing checkpoint"<<endl;
-    string filename = ("../svd_U_matrix_"+to_string(LATENT_FACTORS)+"lf_"+to_string(epoch)+"ep.txt");
+    string filename = ("../svd++_bias_U_matrix_"+to_string(LATENT_FACTORS)+"lf_"+to_string(epoch)+"ep.txt");
     // Write U and V to a file
     outFile.open(filename);
     if (outFile.is_open()) {
-        outFile << U;
+        for (int i = 0; i < USER_SIZE; i++) {
+            for (int k = 0; k < LATENT_FACTORS; k++) {
+                outFile << U[i][k];
+                if (k < LATENT_FACTORS - 1) {
+                    outFile << "\t";
+                } else {
+                    outFile << endl;
+                }
+            }
+        }
     }
     outFile.close();
-    filename = ("../svd_V_matrix_"+to_string(LATENT_FACTORS)+"lf_"+to_string(epoch)+"ep.txt");
+    filename = ("../svd++_bias_V_matrix_"+to_string(LATENT_FACTORS)+"lf_"+to_string(epoch)+"ep.txt");
     outFile.open(filename);
     if (outFile.is_open()) {
-        outFile << V;
+        for (int j = 0; j < MOVIE_SIZE; j++) {
+            for (int k = 0; k < LATENT_FACTORS; k++) {
+                outFile << V[j][k];
+                if (k < LATENT_FACTORS - 1) {
+                    outFile << "\t";
+                } else {
+                    outFile << endl;
+                }
+            }
+        }
     }
     outFile.close();
 }
@@ -155,12 +187,15 @@ svd_ans train_model_from_UV(double eta, double reg,
                             short* date_matrix, double* rating_matrix,
                             int* user_matrix_val, short* movie_matrix_val,
                             short* date_matrix_val, double* rating_matrix_val,
-                            MatrixXd U, MatrixXd V, MatrixXd Y, MatrixXd SumMW) {
+                            double** U, double** V,
+                            int* user_matrix_test, short* movie_matrix_test,
+                            short* date_matrix_test, double* bu, double* bi) {
     /*
-    Given a training data matrix Y containing rows (i, j, Y_ij)
-    where Y_ij is user i's rating on movie j, learns an
+    Given a training data Y_ij is user i's rating on movie j, learns an
     USER_SIZE x LATENT_FACTORS matrix U and MOVIE_SIZE x LATENT_FACTORS matrix V such that rating Y_ij is approximated
     by (UV)_ij.
+
+    y is the second set of latent factors, MOVIE_SIZE by LATENT_FACTORS
 
     Uses an initial learning rate of <eta> and regularization of <reg>. Stops
     after <MAX_EPOCH> epochs, or MSE of validation set stops decreasing.
@@ -170,32 +205,14 @@ svd_ans train_model_from_UV(double eta, double reg,
     of the model.
     */
 
-    double E_in, E_val, init_E_in, init_E_val;
+    double E_in, E_val;
+    double init_E_in = 100, init_E_val = 100;
+
+
+
 
     // Initialize timers
     system_clock::time_point start_time, end_time;
-
-    // Calculate initial E_in only on a portion of the in data.
-    start_time = system_clock::now();
-    srand ( unsigned ( time(0) ) );
-    long rand_n = rand() % (TRAIN_SIZE-1000001);
-    init_E_in = get_err(U, V, user_matrix+rand_n, movie_matrix+rand_n,
-                        date_matrix+rand_n, rating_matrix+rand_n,
-                        1000000, reg, SumMW, user_bias, movie_bias);
-    end_time = system_clock::now();
-    auto duration = duration_cast<seconds>( end_time - start_time ).count();
-    cout << "Initial E_in: " << init_E_in
-         << "  Time: " << duration / 60 << "m" << duration % 60 << "s" << endl;
-
-    // Calculate initial E_val
-    start_time = system_clock::now();
-    init_E_val = get_err(U, V, user_matrix_val, movie_matrix_val,
-                         date_matrix_val, rating_matrix_val,
-                         VALID_SIZE, reg, SumMW, user_bias, movie_bias);
-    end_time = system_clock::now();
-    duration = duration_cast<seconds>( end_time - start_time ).count();
-    cout << "Initial E_val: " << init_E_val
-         << "  Time: " << duration / 60 << "m" << duration % 60 << "s" << endl;
 
     // Stochastic gradient descent
     ofstream outFile;
@@ -206,111 +223,57 @@ svd_ans train_model_from_UV(double eta, double reg,
 
         // Checkpoint every 10 epochs
 		if (epoch % 10 == 0 ) {
-            checkpoint_U_V(U, V, epoch);
+            predict( U, V, bu, bi,user_matrix_test, movie_matrix_test, date_matrix_test);
+
 		}
 
-		// Loop through the users
-        for (long user = 1; user < USER_SIZE; user++) {
+		// Loop through the users, i is the user id - 1
+        for (long i = 0; i < USER_SIZE; i++) {
 
             // Progress bar
-            if (user % 1000 == 0) {
+            if (i % 1000 == 0) {
                 end_time = system_clock::now();
-                duration = duration_cast<seconds>( end_time - start_time ).count();
-                cout << "\r" << to_string(user * 100 / USER_SIZE) << "%%"
+                auto duration = duration_cast<seconds>( end_time - start_time ).count();
+                cout << "\r" << to_string(i * 100 / USER_SIZE) << "%%"
                      << "  Time: " << duration / 60 << "m" << duration % 60 << "s" << flush;
             }
 
-            // Update U[i], V[j]
-            int i = user;
-            double r_u = 0.0;
-			// calculate R(u) ^ -1/2
-			int sz = (movies_rated_by_user[user]).size();
-			// Want to make sure it is not 0 before we divide and take the square root
-			if (sz > 0)
-			{
-				r_u = 1 / sqrt(sz);
-			}
-
-			// Intialize a vector of 0's that have the same number of latent factors like in github code
-			VectorXd tmpSum = VectorXd::Zero(LATENT_FACTORS);
-			// List of movies rated by this particular user
-			vector<int> user_movies = movies_rated_by_user[user];
-			// List of ratings made by this particular user, is in the same order as the movies rated by this user
-			vector<int> user_ratings = ratings_by_user[user];
-			// populate the SumMW matrix
-			for (int lat = 0; lat < LATENT_FACTORS; lat++)
-			{
-				double sumy = 0;
-				// get the sum for all the movies rated by the user the
-				// latent factors associated with the movie rated by the user
-				for (int j = 0; j < sz; j++)
-				{
-					sumy += Y(user_movies[j], lat);
-				}
-				SumMW(i, lat) = sumy;
-			}
-
-			// update the U and V matricies using the gradient
-			for (int f = 0; f < sz; f++)
-			{
-				//loop through all the movies rated by a user
-				double Yij = user_ratings[f];
-				int j = user_movies[f];
-				// get the predicted score -> I created the predicted _score function
-				double score = predict_score(U.row(i-1), V.col(j-1), SumMW.row(i-1), r_u, user_bias[i], movie_bias[j]);
-				U.row(i-1) += grad_U(U.row(i-1), Yij, V.col(j-1), reg, eta, score);
-				V.col(j-1) += grad_V(V.col(j-1), Yij, U.row(i-1), reg, eta, score, r_u, SumMW.row(i-1));
-				// U.row(i-1) = grad_U(U.row(i-1), Yij, V.col(j-1), reg, eta, score);
-				// V.col(j-1) = grad_V(V.col(j-1), Yij, U.row(i-1), reg, eta, score, r_u, SumMW.row(i-1));
-
-                // This was done in the github code with a variable of the same name so I did it too
-				tmpSum = tmpSum + (Yij - score) * r_u * V.col(j-1);
-			}
-
-			// Update the Y matrice for each movie a user rated
+           
+			int sz = (movies_rated_by_user[i]).size();
+			// Update the U and V matricies using the gradient
+            // Loop through all the movies rated by a user
 			for (int t = 0; t < sz; t++)
 			{
-				int j = user_movies[t];
-				VectorXd tmpMW = Y.row(j-1);
-				Y.row(j-1) = Y.row(j-1) + eta * (tmpSum - reg * tmpMW);
-				SumMW.row(i-1) = SumMW.row(i-1) + Y.row(j-1) - tmpMW;
+				double Yij = ratings_by_user[i][t]; // the actual rating
+				int j = movies_rated_by_user[i][t]; // the movie index
+
+				// get the predicted score
+                double score = predict_score(U, V, i, j, bu[i], bi[j]);
+                double error = Yij - score;
+
+                // Update U for user i and V for movie j
+                for(int k = 0; k < LATENT_FACTORS; k++){
+                    double uf = U[i][k]; // The U latent factor for this user i
+                    double mf = V[j][k]; // The V latent factor for this movie j
+                    U[i][k] += eta * (error * mf - reg * uf);
+                    V[j][k] += eta * (error * uf - reg * mf);
+                    bi[j] += eta * (error - REG_BIAS * bi[j]);
+                    bu[i] += eta * (error - REG_BIAS * bu[i]);
+                }
 			}
+
         }
 
-        // update part of the y matrix again in order to save us from
-        // wasting too much time recalculaing the y matrix? idk they did this in their code
-        for (int user = 0; user < USER_SIZE; user++)
-        {
-			vector<int> user_movies = movies_rated_by_user[user];
-			int sz = (movies_rated_by_user[user]).size();
-			double r_u = 0.0;
-			// Want to make sure it is not 0 before we divide and take the square root
-			if (sz > 0)
-			{
-				r_u = 1 / sqrt(sz);
-			}
-			for (int lat = 0; lat < LATENT_FACTORS; lat++)
-			{
-				double sumy = 0;
-				// get the sum for all the movies rated by the user the
-				// latent factors associated with the movie rated by the user
-				for (int j = 0; j < sz; j++)
-				{
-					sumy += Y(user_movies[j], lat);
-				}
-				SumMW(user, lat) = sumy;
-			}
-		}
 
         // At end of epoch, print E_in, E_val
         srand ( unsigned ( time(0) ) );
-        rand_n = rand() % (TRAIN_SIZE-1000001);
+        long rand_n = rand() % (TRAIN_SIZE-1000001);
         E_in = get_err(U, V, user_matrix+rand_n, movie_matrix+rand_n,
                             date_matrix+rand_n, rating_matrix+rand_n,
-                            1000000, reg, SumMW,user_bias,movie_bias);
+                            1000000, reg,bu,bi);
         E_val = get_err(U, V, user_matrix_val, movie_matrix_val,
                               date_matrix_val, rating_matrix_val,
-                              VALID_SIZE, reg,SumMW, user_bias, movie_bias);
+                              VALID_SIZE, reg, bu, bi);
 
         cout << endl << "E_in: " << E_in << "  E_val: " << E_val << endl;
 
@@ -322,7 +285,7 @@ svd_ans train_model_from_UV(double eta, double reg,
             break;
         }
         init_E_val = E_val;
-        // eta = 0.9 * eta;
+        eta *= (0.9 + 0.1 * rand() / RAND_MAX);
     }
     cout << endl;
 
@@ -347,24 +310,9 @@ svd_ans complete_training(double eta, double reg) {
 	// IO
     ifstream inFile;
     ofstream outFile;
-	ifstream inFile_bias;
 
-	// Read in bias /////
-	inFile_bias.open("bias_checkpoint.txt");
-	cout << "Reading bias data for users" << endl;
-	for (long i = 0; i <=USER_SIZE; i++) {
-        inFile_bias >> user_bias[i];
-        if (i % 100 == 0) {
-            cout << "\r" << to_string(i * 100 / (USER_SIZE+1)) << "%%" << flush;
-        }
-    }
-    cout << "\nReading bias data for movies" << endl;
-	for (long i = 0; i <= MOVIE_SIZE; i++) {
-        inFile_bias >> movie_bias[i];
-        if (i % 100 == 0) {
-            cout << "\r" << to_string(i * 100 / (MOVIE_SIZE+1)) << "%%" << flush;
-        }
-    }
+
+	
     // Read training data
     cout << "\nReading training input." << endl;
     inFile.open("../dataset1_shuffled_all.dta");
@@ -377,13 +325,13 @@ svd_ans complete_training(double eta, double reg) {
 		inFile >> movie_matrix[i];
 		inFile >> date_matrix[i];
 		inFile >> rating_matrix[i];
-        if (i % 100 == 0) {
+        if (i % 100000 == 0) {
             cout << "\r" << to_string(i * 100 / TRAIN_SIZE) << "%%" << flush;
         }
     }
     cout << endl;
     inFile.close();
-    inFile_bias.close();
+
 
 	populate_movies_to_array(user_matrix, movie_matrix, rating_matrix);
 
@@ -406,24 +354,76 @@ svd_ans complete_training(double eta, double reg) {
     cout << endl;
     inFile.close();
 
-	// Create y array
-	MatrixXd Y = MatrixXd::Random(MOVIE_SIZE, LATENT_FACTORS);
-	// Create the part of the Y array that will be used for the gradient
-	MatrixXd sumMW = MatrixXd::Random(USER_SIZE, LATENT_FACTORS);
+	cout<<" Reading out test data " <<endl;
+	// Read in training data
+    ifstream inFile_test;
+	inFile_test.open("../dataset5_unshuffled_all.dta");
+    int* user_matrix_test = new int[TEST_SIZE];
+    short* movie_matrix_test = new short[TEST_SIZE];
+    short* date_matrix_test = new short[TEST_SIZE];
+    int garbage_zero_rating;
+    for (long i=0; i<TEST_SIZE; i++) {
+        inFile_test >> user_matrix_test[i];
+        inFile_test >> movie_matrix_test[i];
+        inFile_test >> date_matrix_test[i];
+        inFile_test >> garbage_zero_rating;
+        if (i % 100 == 0) {
+            cout << "\r" << to_string(i * 100 / TEST_SIZE) << "%%" << flush;
+        }
+    }
+    cout << endl;
+    inFile_test.close();
+
+
+    // Create U matrix
+    double** U = new double* [USER_SIZE];
+    // Create V matrix
+    double** V = new double* [MOVIE_SIZE];
+
+	double* bi = new double [MOVIE_SIZE];
+	double* bu = new double [USER_SIZE];
+	
+	
+	
+    // Initialize the matrices
+    for(int j = 0; j < MOVIE_SIZE; j++){
+        V[j] = new double[LATENT_FACTORS];
+        bi[j] = 0.0;
+        for(int k = 0; k < LATENT_FACTORS; k++){
+            srand ( unsigned ( time(0) ) );
+            V[j][k] = 0.1 * (rand() / (RAND_MAX + 1.0)) / sqrt(LATENT_FACTORS);
+        }
+    }
+    for(int i = 0; i < USER_SIZE; i++){
+        U[i] = new double[LATENT_FACTORS];
+        bu[i] = 0.0;
+        for(int k = 0; k < LATENT_FACTORS; k++){
+            U[i][k] = 0.1 * (rand() / (RAND_MAX + 1.0)) / sqrt(LATENT_FACTORS);
+        }
+    }
+
     // Train SVD
     cout << "Training model." << endl;
 
-    MatrixXd U = MatrixXd::Random(USER_SIZE, LATENT_FACTORS);
-    MatrixXd V = MatrixXd::Random(LATENT_FACTORS, MOVIE_SIZE);
+    // MatrixXd U = MatrixXd::Random(USER_SIZE, LATENT_FACTORS);
+    // MatrixXd V = MatrixXd::Random(LATENT_FACTORS, MOVIE_SIZE);
+	// MatrixXd y = MatrixXd::Random(MOVIE_SIZE, LATENT_FACTORS);
+	// MatrixXd SumMW = MatrixXd::Random(USER_SIZE, LATENT_FACTORS);
+
     svd_ans result = train_model_from_UV(eta, reg,
                                         user_matrix, movie_matrix,
                                         date_matrix, rating_matrix,
                                         user_matrix_val, movie_matrix_val,
                                         date_matrix_val, rating_matrix_val,
-                                        U, V, Y, sumMW);
+                                        U, V,user_matrix_test,
+                                        movie_matrix_test, date_matrix_test,
+                                        bu,bi);
 
     cout << "Final E_in: " << result.E_in << "  E_val: " << result.E_val << endl;
 
+	delete[] user_matrix_test;
+    delete[] movie_matrix_test;
+    delete[] date_matrix_test;
     delete[] rating_matrix;
 	delete[] user_matrix;
 	delete[] movie_matrix;
@@ -432,6 +432,11 @@ svd_ans complete_training(double eta, double reg) {
 	delete[] user_matrix_val;
 	delete[] movie_matrix_val;
     delete[] date_matrix_val;
+
+    for (long r = 0; r < USER_SIZE;  r++) { delete[] U[r]; }
+    for (long r = 0; r < MOVIE_SIZE; r++) { delete[] V[r]; }
+    delete[] U;
+    delete[] V;
 
     return result;
 }
@@ -443,12 +448,10 @@ int main() {
     // To do training from the very beginning
     svd_ans result = complete_training(LEARNING_RATE, REGULARIZATION);
 
-
-
     // To do training from saved U V matrices
 
-    // MatrixXd U = read_matrix_from_file(U_filename);
-    // MatrixXd V = read_matrix_from_file(V_filename);
+    // double** U = read_matrix_from_file(U_filename);
+    // double** V = read_matrix_from_file(V_filename);
     // svd_ans result = train_model_from_UV(eta, reg,
     //                                     user_matrix, movie_matrix,
     //                                     date_matrix, rating_matrix,
