@@ -7,7 +7,7 @@
 #define reg_alpha  0.00001
 #define eta_alpha  0.0004
 #define MAX_EPOCH      400
-#define PRED_FILENAME ("../predictions_svd++_" + to_string(LATENT_FACTORS) + "lf_5_16.dta")
+#define PRED_FILENAME ("../predictions_timesvd++_" + to_string(LATENT_FACTORS) + "lf_5_16.dta")
 
 /*
  * IMPORTANT:

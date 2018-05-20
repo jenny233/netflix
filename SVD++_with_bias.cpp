@@ -1,11 +1,13 @@
 #include "SVD++_with_bias.h"
 #include <string>
 #include <cmath>
-#define LATENT_FACTORS 50
+#define LATENT_FACTORS 250
 #define REGULARIZATION 0.015
-#define LEARNING_RATE  0.007
+#define REGULARIZATION_Y .01
+#define LEARNING_RATE  0.005
+#define LEARNING_RATE_Y 0.001
+#define LEARNING_RATE_BIAS 0.001
 #define MAX_EPOCH      400
-#define REG_BIAS       0.005
 #define PRED_FILENAME ("../predictions_svd++_" + to_string(LATENT_FACTORS) + "lf_5_16.dta")
 
 /*
@@ -294,11 +296,11 @@ svd_ans train_model_from_UV(double eta, double reg,
                 for(int k = 0; k < LATENT_FACTORS; k++){
                     double uf = U[i][k]; // The U latent factor for this user i
                     double mf = V[j][k]; // The V latent factor for this movie j
-                    U[i][k] += eta * (error * mf - reg * uf);
-                    V[j][k] += eta * (error * (uf + sqrt_r*SumMW[i][k]) - reg * mf);
+                    U[i][k] += LEARNING_RATE * (error * mf - REGULARIZATION * uf);
+                    V[j][k] += LEARNING_RATE * (error * (uf + sqrt_r*SumMW[i][k]) - reg * mf);
                     tmpSum[k] += error * sqrt_r * mf;
-                    bi[j] += eta * (error - REG_BIAS * bi[j]);
-                    bu[i] += eta * (error - REG_BIAS * bu[i]);
+                    bi[j] += LEARNING_RATE_BIAS * (error - REGULARIZATION * bi[j]);
+                    bu[i] += LEARNING_RATE_BIAS * (error - REGULARIZATION * bu[i]);
                 }
 			}
 
@@ -307,7 +309,7 @@ svd_ans train_model_from_UV(double eta, double reg,
 			{
 				int j = movies_rated_by_user[i][t];
                 for (int k = 0; k < LATENT_FACTORS; ++k) {
-                    y[j][k] += eta * (tmpSum[k] - reg * y[j][k]);
+                    y[j][k] += LEARNING_RATE_Y * (tmpSum[k] - REGULARIZATION_Y * y[j][k]);
                 }
 			}
         }

@@ -8,7 +8,6 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cmath>
-#include <Eigen/Dense>
 #include <random>       // std::default_random_engine
 #include <chrono>       // std::chrono::system_clock
 
@@ -22,7 +21,6 @@
 #define TRAINING_DATA_AVERAGE 3.60861
 using namespace std;
 using namespace std::chrono;
-using namespace Eigen;
 
 
 struct svd_ans {
