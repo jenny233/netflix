@@ -1,8 +1,8 @@
 #include "timeSVD++.h"
 #include <string>
 #include <cmath>
-#define LATENT_FACTORS 30
-#define REGULARIZATION 0.007
+#define LATENT_FACTORS 1000
+#define REGULARIZATION 0.015
 #define LEARNING_RATE  0.005
 #define reg_alpha  0.00001
 #define eta_alpha  0.0004

@@ -42,7 +42,7 @@ int main () {
 		int x;
 		inFile >> x;
 
-		if (x == DATASET_NUM) {
+		if (x == 1 || x == 4) {
 			list_of_indices.push_back(count);
 		}
 

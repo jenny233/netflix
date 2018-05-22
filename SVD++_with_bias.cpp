@@ -381,7 +381,7 @@ svd_ans complete_training(double eta, double reg) {
 	
     // Read training data
     cout << "\nReading training input." << endl;
-    inFile.open("../dataset1_shuffled_all.dta");
+    inFile.open("../dataset1_and_probe_unshuffled_all.dta");
     if (!inFile) {
         std::cout << "File not opened." << endl;
         exit(1);
