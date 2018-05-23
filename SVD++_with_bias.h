@@ -15,7 +15,7 @@
 #define TRAIN_SIZE  94362233   // Use long while looping
 // #define TRAIN_SIZE 500000
 #define VALID_SIZE  1965045    // Use long while looping
-#define TEST_SIZE  2749898     // Use long while looping
+// #define TEST_SIZE  2749898     // Use long while looping
 #define USER_SIZE  458293      // Use long while looping
 #define MOVIE_SIZE  17770      // Use int while looping
 #define TRAINING_DATA_AVERAGE 3.60861

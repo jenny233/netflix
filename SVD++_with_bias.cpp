@@ -1,6 +1,7 @@
 #include "SVD++_with_bias.h"
 #include <string>
 #include <cmath>
+#define TEST_SIZE 1374739 // for probe set
 #define LATENT_FACTORS 250
 #define REGULARIZATION 0.015
 #define REGULARIZATION_Y .01
@@ -8,7 +9,7 @@
 #define LEARNING_RATE_Y 0.001
 #define LEARNING_RATE_BIAS 0.001
 #define MAX_EPOCH      400
-#define PRED_FILENAME ("../predictions_svd++_" + to_string(LATENT_FACTORS) + "lf_5_16.dta")
+#define PRED_FILENAME ("../probe_predictions_svd++_bias_" + to_string(LATENT_FACTORS) + "lf.dta")
 
 /*
  * IMPORTANT:
@@ -378,10 +379,10 @@ svd_ans complete_training(double eta, double reg) {
     ofstream outFile;
 
 
-	
+
     // Read training data
     cout << "\nReading training input." << endl;
-    inFile.open("../dataset1_and_probe_unshuffled_all.dta");
+    inFile.open("../dataset1_unshuffled_all.dta");
     if (!inFile) {
         std::cout << "File not opened." << endl;
         exit(1);
@@ -423,7 +424,7 @@ svd_ans complete_training(double eta, double reg) {
 	cout<<" Reading out test data " <<endl;
 	// Read in training data
     ifstream inFile_test;
-	inFile_test.open("../dataset5_unshuffled_all.dta");
+	inFile_test.open("../probe.dta");
     int* user_matrix_test = new int[TEST_SIZE];
     short* movie_matrix_test = new short[TEST_SIZE];
     short* date_matrix_test = new short[TEST_SIZE];
@@ -452,9 +453,9 @@ svd_ans complete_training(double eta, double reg) {
 
 	double* bi = new double [MOVIE_SIZE];
 	double* bu = new double [USER_SIZE];
-	
-	
-	
+
+
+
     // Initialize the matrices
     for(int j = 0; j < MOVIE_SIZE; j++){
         V[j] = new double[LATENT_FACTORS];
