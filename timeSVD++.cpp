@@ -1,9 +1,21 @@
 #include "timeSVD++.h"
 #include <string>
 #include <cmath>
-#define LATENT_FACTORS 1000
-#define REGULARIZATION 0.015
-#define LEARNING_RATE  0.005
+#define LATENT_FACTORS 30
+#define REGULARIZATION_UF 0.0080
+#define REGULARIZATION_MF 0.0006
+#define REGULARIZATION_Y 0.030
+#define REGULARIZATION_MB 0
+#define REGULARIZATION_UB 0.030
+#define LEARNING_RATE_UF  0.006
+#define LEARNING_RATE_MF .0011
+#define LEARNING_RATE_Y 0.0001
+#define LEARNING_RATE_MB 0.003
+#define LEARNING_RATE_UB 0.012
+#define REGULARIZATION_BINS 0.006
+#define LEARNING_RATE_BINS 0.0012
+#define REGULARIZATION 0.0060
+#define LEARNING_RATE 0.012
 #define reg_alpha  0.00001
 #define eta_alpha  0.0004
 #define MAX_EPOCH      400
@@ -399,9 +411,9 @@ svd_ans train_model_from_UV(double eta, double reg,
                 double score = predict_score(U, V, SumMW, i, j, time, bu[i], bi[j], sqrt_r, Bi_Bin[j][CalBin(time)], Alpha_u[i],Tu);
                 double error = Yij - score;
                 
-                bu[i] += reg * (error - eta * bu[i]);
-                bi[j] += reg * (error - eta * bi[j]);
-                Bi_Bin[j][CalBin(time)] += reg * (error - eta * Bi_Bin[j][CalBin(time)]);
+                bu[i] += REGULARIZATION_UB * (error - LEARNING_RATE_UB * bu[i]);
+                bi[j] += REGULARIZATION_MB * (error - LEARNING_RATE_MB * bi[j]);
+                Bi_Bin[j][CalBin(time)] += REGULARIZATION_BINS * (error - LEARNING_RATE_BINS * Bi_Bin[j][CalBin(time)]);
                 Alpha_u[i] += reg_alpha * (error * CalDev(i,time,Tu) - eta_alpha * Alpha_u[i]);
                 Bu_t[i][time] += reg * ( error - eta * Bu_t[i][time]);                
                 
@@ -409,8 +421,8 @@ svd_ans train_model_from_UV(double eta, double reg,
                 for(int k = 0; k < LATENT_FACTORS; k++){
                     double uf = U[i][k]; // The U latent factor for this user i
                     double mf = V[j][k]; // The V latent factor for this movie j
-                    U[i][k] += eta * (error * mf - reg * uf);
-                    V[j][k] += eta * (error * (uf + sqrt_r*SumMW[i][k]) - reg * mf);
+                    U[i][k] += LEARNING_RATE_UF * (error * mf - REGULARIZATION_UF * uf);
+                    V[j][k] += LEARNING_RATE_MF * (error * (uf + sqrt_r*SumMW[i][k]) - REGULARIZATION_MF * mf);
                     tmpSum[k] += error * sqrt_r * mf;
                 }
 			}
@@ -419,7 +431,7 @@ svd_ans train_model_from_UV(double eta, double reg,
 			{
 				int j = movies_rated_by_user[i][t];
                 for (int k = 0; k < LATENT_FACTORS; ++k) {
-                    y[j][k] += eta * (tmpSum[k] - reg * y[j][k]);
+                    y[j][k] += LEARNING_RATE_Y * (tmpSum[k] - REGULARIZATION_Y * y[j][k]);
                 }
 			}
         }
