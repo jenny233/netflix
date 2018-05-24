@@ -13,10 +13,6 @@
 #include <chrono>       // std::chrono::system_clock
 
 // Max number of int is 65535
-#define TRAIN_SIZE  94362233   // Use long while looping
-//#define TRAIN_SIZE  10000000
-#define VALID_SIZE  1965045    // Use long while looping
-#define TEST_SIZE  2749898     // Use long while looping
 #define USER_SIZE  458293      // Use long while looping
 #define TIME_SIZE   2243
 #define MOVIE_SIZE  17770      // Use int while looping
