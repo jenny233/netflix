@@ -20,7 +20,7 @@
 // #define VALID_IN_FILENAME "../dataset2_shuffled_all.dta"
 // #define VALID_SIZE        VALID_DATASET_SIZE
 
-int    LATENT_FACTORS      = 250;
+int    LATENT_FACTORS      = 400;
 double REGULARIZATION_UF   = 0.008;
 double REGULARIZATION_MF   = 0.0006;
 double REGULARIZATION_Y    = 0.003;
@@ -586,11 +586,11 @@ svd_ans complete_training(double eta, double reg) {
 
 
 
-	double reg_uf[] = {0.02, 0.04, 0.06};
-	double reg_mf[] = {0.007};
-	double reg_y[]  = {0.0015, 0.007, 0.015};
+	double reg_uf[] = {0.02, 0.06};
+	double reg_mf[] = {0.007, 0.07};
+	double reg_y[]  = {0.001, 0.01};
 	double reg_mb[] = {0};
-	double reg_ub[] = {0.007, 0.015};
+	double reg_ub[] = {0.001, 0.01};
 	double reg_bn[] = {0.0008};
 	double reg_bu[] = {0.0006};
 	// double[] eta_uf = {0.006};
@@ -601,7 +601,7 @@ svd_ans complete_training(double eta, double reg) {
 	// double[] eta_bn = {0.0012};
 	// double[] eta_bu = {0.012};
 
-    outFile.open("Grid_Search_"+to_string(LATENT_FACTORS)+"_3.log");
+    outFile.open("Grid_Search_"+to_string(LATENT_FACTORS)+"_1.log");
 	svd_ans result;
 
 	double lowestRMSE = 100;
