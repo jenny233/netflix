@@ -629,11 +629,11 @@ svd_ans complete_training(double eta, double reg) {
 	// 						for (int i7=0; i7<1; i7++) {
 	// 							REGULARIZATION = reg_bu[i7];
 
-	for (int i1=0; i1<3; i1++) {
+	for (int i1=0; i1<2; i1++) {
 		REGULARIZATION_UF = reg_uf[i1];
-	for (int i2=0; i2<1; i2++) {
+	for (int i2=0; i2<2; i2++) {
 		REGULARIZATION_MF = reg_mf[i2];
-	for (int i3=0; i3<3; i3++) {
+	for (int i3=0; i3<2; i3++) {
 		REGULARIZATION_Y = reg_y[i3];
 	for (int i4=0; i4<1; i4++) {
 		REGULARIZATION_MB = reg_mb[i4];
