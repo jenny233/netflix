@@ -1,11 +1,11 @@
 #include "SVD++.hpp"
 #include <string>
 #include <cmath>
-#define LATENT_FACTORS 200
-#define REGULARIZATION 0.1
-#define LEARNING_RATE  0.007
+#define LATENT_FACTORS 400
+#define REGULARIZATION 0.015
+#define LEARNING_RATE  0.005
 #define MAX_EPOCH      400
-#define PRED_FILENAME ("../predictions_svd++_" + to_string(LATENT_FACTORS) + "lf_5_16.dta")
+#define PRED_FILENAME ("../test_predictions_svd++_" + to_string(LATENT_FACTORS) + "lf.dta")
 
 /*
  * IMPORTANT:
@@ -379,7 +379,7 @@ svd_ans complete_training(double eta, double reg) {
 
 	// Read in bias /////
 	cout << "Reading bias data" << endl;
-	inFile_bias.open("../bias_checkpoint.txt");
+	inFile_bias.open("bias_checkpoint.txt");
     if (!inFile) {
         std::cout << "File not opened." << endl;
         exit(1);
@@ -392,6 +392,7 @@ svd_ans complete_training(double eta, double reg) {
             cout << "\r" << "Users: " << to_string(i * 100 / USER_SIZE) << "%%" << flush;
         }
     }
+	cout<<user_bias[1]<<endl;
     inFile_bias >> garbage_zero_bias;
 	for (long i = 0; i <= MOVIE_SIZE; i++) {
         inFile_bias >> movie_bias[i];
@@ -399,9 +400,10 @@ svd_ans complete_training(double eta, double reg) {
             cout << "\r" << "Movies: " << to_string(i * 100 / MOVIE_SIZE) << "%%" << flush;
         }
     }
+	cout<<movie_bias[1]<<endl;
     // Read training data
     cout << "\nReading training input." << endl;
-    inFile.open("../dataset1_shuffled_all.dta");
+    inFile.open("../train_and_probe_shuffled_all.dta");
     if (!inFile) {
         std::cout << "File not opened." << endl;
         exit(1);

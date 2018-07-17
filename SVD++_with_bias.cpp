@@ -1,15 +1,20 @@
 #include "SVD++_with_bias.h"
 #include <string>
 #include <cmath>
-#define TEST_SIZE 1374739 // for probe set
-#define LATENT_FACTORS 250
-#define REGULARIZATION 0.015
-#define REGULARIZATION_Y .01
+//#define TRAIN_SIZE 94362233  // for training dataset only
+//#define TEST_SIZE  1374739   // for probe set
+#define TRAIN_SIZE 95736972	 // for train + probe
+#define TEST_SIZE  2749898   // for test
+#define VALID_SIZE 1965045
+#define LATENT_FACTORS 450
+#define REGULARIZATION 0.05
+#define REGULARIZATION_Y .015
 #define LEARNING_RATE  0.005
 #define LEARNING_RATE_Y 0.001
-#define LEARNING_RATE_BIAS 0.001
+#define LEARNING_RATE_UBIAS 0.007
+#define LEARNING_RATE_MBIAS 0
 #define MAX_EPOCH      400
-#define PRED_FILENAME ("../probe_predictions_svd++_bias_" + to_string(LATENT_FACTORS) + "lf.dta")
+#define PRED_FILENAME ("../test_predictions_svd++_bias_" + to_string(LATENT_FACTORS) + "lf_highreg.dta")
 
 /*
  * IMPORTANT:
@@ -300,8 +305,8 @@ svd_ans train_model_from_UV(double eta, double reg,
                     U[i][k] += LEARNING_RATE * (error * mf - REGULARIZATION * uf);
                     V[j][k] += LEARNING_RATE * (error * (uf + sqrt_r*SumMW[i][k]) - reg * mf);
                     tmpSum[k] += error * sqrt_r * mf;
-                    bi[j] += LEARNING_RATE_BIAS * (error - REGULARIZATION * bi[j]);
-                    bu[i] += LEARNING_RATE_BIAS * (error - REGULARIZATION * bu[i]);
+                    bi[j] += LEARNING_RATE_MBIAS * (error - REGULARIZATION * bi[j]);
+                    bu[i] += LEARNING_RATE_UBIAS * (error - REGULARIZATION * bu[i]);
                 }
 			}
 
@@ -382,7 +387,7 @@ svd_ans complete_training(double eta, double reg) {
 
     // Read training data
     cout << "\nReading training input." << endl;
-    inFile.open("../dataset1_unshuffled_all.dta");
+    inFile.open("../train_and_probe_shuffled_all.dta");
     if (!inFile) {
         std::cout << "File not opened." << endl;
         exit(1);
@@ -424,7 +429,7 @@ svd_ans complete_training(double eta, double reg) {
 	cout<<" Reading out test data " <<endl;
 	// Read in training data
     ifstream inFile_test;
-	inFile_test.open("../probe.dta");
+	inFile_test.open("../dataset5_unshuffled_all.dta");
     int* user_matrix_test = new int[TEST_SIZE];
     short* movie_matrix_test = new short[TEST_SIZE];
     short* date_matrix_test = new short[TEST_SIZE];

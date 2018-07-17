@@ -18,8 +18,8 @@
 #define MOVIE_SIZE 17701
 #define DO_SHUFFLE true  // true: time seeded shuffle, false: no shuffling
 
-#define DATASET_NUM  1  // The dataset that we want to select
-#define OUTFILE_NAME "dataset1_shuffled_all.dta"
+// #define DATASET_NUM  1  // The dataset that we want to select
+#define OUTFILE_NAME "train_and_probe_shuffled_all.dta"
 
 
 

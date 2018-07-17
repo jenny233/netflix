@@ -20,7 +20,7 @@
 // #define VALID_IN_FILENAME "../dataset2_shuffled_all.dta"
 // #define VALID_SIZE        VALID_DATASET_SIZE
 
-int    LATENT_FACTORS      = 400;
+int    LATENT_FACTORS      = 250;
 double REGULARIZATION_UF   = 0.008;
 double REGULARIZATION_MF   = 0.0006;
 double REGULARIZATION_Y    = 0.003;
@@ -348,7 +348,6 @@ svd_ans train_model_from_UV(double eta, double reg,
     system_clock::time_point start_time, end_time;
 
     // Stochastic gradient descent
-    ofstream outFile;
 	calculate_mean_times(Tu);
 	// Populate the short term bias that will see if any movies were rated on the same day
 	for ( int i = 0;  i < USER_SIZE; i++)
@@ -586,11 +585,11 @@ svd_ans complete_training(double eta, double reg) {
 
 
 
-	double reg_uf[] = {0.02, 0.06};
-	double reg_mf[] = {0.007, 0.07};
-	double reg_y[]  = {0.001, 0.01};
+	double reg_uf[] = {0.005, 0.01, 0.02, 0.06};
+	double reg_mf[] = {0.007};
+	double reg_y[]  = {0.015};
 	double reg_mb[] = {0};
-	double reg_ub[] = {0.001, 0.01};
+	double reg_ub[] = {0.005};
 	double reg_bn[] = {0.0008};
 	double reg_bu[] = {0.0006};
 	// double[] eta_uf = {0.006};
@@ -601,7 +600,7 @@ svd_ans complete_training(double eta, double reg) {
 	// double[] eta_bn = {0.0012};
 	// double[] eta_bu = {0.012};
 
-    outFile.open("Grid_Search_"+to_string(LATENT_FACTORS)+"_1.log");
+    outFile.open("Grid_Search_"+to_string(LATENT_FACTORS)+"_3.log");
 	svd_ans result;
 
 	double lowestRMSE = 100;
@@ -629,127 +628,127 @@ svd_ans complete_training(double eta, double reg) {
 	// 						for (int i7=0; i7<1; i7++) {
 	// 							REGULARIZATION = reg_bu[i7];
 
-	for (int i1=0; i1<2; i1++) {
+	for (int i1=0; i1<4; i1++) {
 		REGULARIZATION_UF = reg_uf[i1];
-	for (int i2=0; i2<2; i2++) {
+	for (int i2=0; i2<1; i2++) {
 		REGULARIZATION_MF = reg_mf[i2];
-	for (int i3=0; i3<2; i3++) {
+	for (int i3=0; i3<1; i3++) {
 		REGULARIZATION_Y = reg_y[i3];
 	for (int i4=0; i4<1; i4++) {
 		REGULARIZATION_MB = reg_mb[i4];
-	for (int i5=0; i5<2; i5++) {
+	for (int i5=0; i5<1; i5++) {
 		REGULARIZATION_UB = reg_ub[i5];
 	for (int i6=0; i6<1; i6++) {
 		REGULARIZATION_BINS = reg_bn[i6];
 	for (int i7=0; i7<1; i7++) {
 		REGULARIZATION = reg_bu[i7];
 
-								// Create U matrix
-							    double** U = new double* [USER_SIZE];
-							    // Create V matrix
-							    double** V = new double* [MOVIE_SIZE];
-							    // Create y array
-							    double** y = new double* [MOVIE_SIZE];
-							    // Create the part of the y array that will be used for the gradient
-							    double** SumMW = new double* [USER_SIZE];
+		// Create U matrix
+	    double** U = new double* [USER_SIZE];
+	    // Create V matrix
+	    double** V = new double* [MOVIE_SIZE];
+	    // Create y array
+	    double** y = new double* [MOVIE_SIZE];
+	    // Create the part of the y array that will be used for the gradient
+	    double** SumMW = new double* [USER_SIZE];
 
 
-							    // Create the user bias array
-							    double* bu = new double [USER_SIZE];
-							    // Create the movie bias array
-							    double* bi = new double [MOVIE_SIZE];
-							    // Create alpha array
-							    double* Alpha_u = new double [USER_SIZE];
-							    // Create bi_bin, which represents a movies ratings over time
-							    double** Bi_Bin = new double* [MOVIE_SIZE];
-							    // Create Tu, which will hold the mean movies, I will make index 0 be user 1
-								double* Tu = new double [USER_SIZE];
+	    // Create the user bias array
+	    double* bu = new double [USER_SIZE];
+	    // Create the movie bias array
+	    double* bi = new double [MOVIE_SIZE];
+	    // Create alpha array
+	    double* Alpha_u = new double [USER_SIZE];
+	    // Create bi_bin, which represents a movies ratings over time
+	    double** Bi_Bin = new double* [MOVIE_SIZE];
+	    // Create Tu, which will hold the mean movies, I will make index 0 be user 1
+		double* Tu = new double [USER_SIZE];
 
-							    // Initialize the matrices
-							    for(int j = 0; j < MOVIE_SIZE; j++){
-									bi[j] = 0.0;
-							        V[j] = new double[LATENT_FACTORS];
-							        y[j] = new double[LATENT_FACTORS];
-							        Bi_Bin[j] = new double[BIN_NUMBER];
-							        for(int k = 0; k < LATENT_FACTORS; k++){
-							            srand ( unsigned ( time(0) ) );
-							            V[j][k] = 0.1 * (rand() / (RAND_MAX + 1.0)) / sqrt(LATENT_FACTORS);
-							            y[j][k] = 0;
-							        }
-							    }
+	    // Initialize the matrices
+	    for(int j = 0; j < MOVIE_SIZE; j++){
+			bi[j] = 0.0;
+	        V[j] = new double[LATENT_FACTORS];
+	        y[j] = new double[LATENT_FACTORS];
+	        Bi_Bin[j] = new double[BIN_NUMBER];
+	        for(int k = 0; k < LATENT_FACTORS; k++){
+	            srand ( unsigned ( time(0) ) );
+	            V[j][k] = 0.1 * (rand() / (RAND_MAX + 1.0)) / sqrt(LATENT_FACTORS);
+	            y[j][k] = 0;
+	        }
+	    }
 
-							    for (int i = 0; i < MOVIE_SIZE; i++)
-							    {
-									for (int k = 0; k < BIN_NUMBER; k++)
-										{
-											Bi_Bin[i][k] = 0;
-										}
-								}
-
-							    for(int i = 0; i < USER_SIZE; i++){
-									bu[i] = 0.0;
-									Alpha_u[i] = 0.0;
-							        U[i] = new double[LATENT_FACTORS];
-							        SumMW[i] = new double[LATENT_FACTORS];
-							        for(int k = 0; k < LATENT_FACTORS; k++){
-							            U[i][k] = 0.1 * (rand() / (RAND_MAX + 1.0)) / sqrt(LATENT_FACTORS);
-							            SumMW[i][k] = 0.1 * (rand() / (RAND_MAX + 1.0)) / sqrt(LATENT_FACTORS);
-							        }
-							    }
-
-
-							    // Train SVD
-							    cout << "Training model." << endl;
-
-								result = train_model_from_UV(LEARNING_RATE, REGULARIZATION,
-							                                        user_matrix, movie_matrix,
-							                                        date_matrix, rating_matrix,
-							                                        user_matrix_val, movie_matrix_val,
-							                                        date_matrix_val, rating_matrix_val,
-							                                        U, V, y, SumMW,user_matrix_val,
-							                                        movie_matrix_val, date_matrix_val,
-							                                        bu, bi, Bi_Bin, Tu, Alpha_u);
-								if (result.E_val < lowestRMSE) {
-									best_REGULARIZATION_UF   = REGULARIZATION_UF;
-									best_REGULARIZATION_MF   = REGULARIZATION_MF;
-									best_REGULARIZATION_Y    = REGULARIZATION_Y;
-									best_REGULARIZATION_MB   = REGULARIZATION_MB;
-									best_REGULARIZATION_UB   = REGULARIZATION_UB;
-									best_REGULARIZATION_BINS = REGULARIZATION_BINS;
-									best_REGULARIZATION      = REGULARIZATION;
-									lowestRMSE = result.E_val;
-								}
-								outFile << "REGULARIZATION_UF   " << REGULARIZATION_UF << endl;
-								outFile << "REGULARIZATION_MF   " << REGULARIZATION_MF << endl;
-								outFile << "REGULARIZATION_Y    " << REGULARIZATION_Y << endl;
-								outFile << "REGULARIZATION_MB   " << REGULARIZATION_MB << endl;
-								outFile << "REGULARIZATION_UB   " << REGULARIZATION_UB << endl;
-								outFile << "REGULARIZATION_BINS " << REGULARIZATION_BINS << endl;
-								outFile << "REGULARIZATION      " << REGULARIZATION << endl;
-								outFile << "e_val: " << result.E_val << endl;
-								outFile << "----------------------------" << endl << endl;
-
-
-							    for (long r = 0; r < USER_SIZE;  r++) { delete[] U[r]; }
-							    for (long r = 0; r < MOVIE_SIZE; r++) { delete[] V[r]; }
-							    for (long r = 0; r < MOVIE_SIZE; r++) { delete[] y[r]; }
-							    for (long r = 0; r < USER_SIZE;  r++) { delete[] SumMW[r]; }
-							    for (long r = 0; r < MOVIE_SIZE;  r++) { delete[] Bi_Bin[r]; }
-
-							    delete[] bi;
-							    delete[] bu;
-							    delete[] Alpha_u;
-							    delete[] Tu;
-							    delete[] U;
-							    delete[] V;
-							    delete[] y;
-							    delete[] SumMW;
-								delete[] Bi_Bin;
-							}
-						}
-					}
+	    for (int i = 0; i < MOVIE_SIZE; i++)
+	    {
+			for (int k = 0; k < BIN_NUMBER; k++)
+				{
+					Bi_Bin[i][k] = 0;
 				}
-			}
+		}
+
+	    for(int i = 0; i < USER_SIZE; i++){
+			bu[i] = 0.0;
+			Alpha_u[i] = 0.0;
+	        U[i] = new double[LATENT_FACTORS];
+	        SumMW[i] = new double[LATENT_FACTORS];
+	        for(int k = 0; k < LATENT_FACTORS; k++){
+	            U[i][k] = 0.1 * (rand() / (RAND_MAX + 1.0)) / sqrt(LATENT_FACTORS);
+	            SumMW[i][k] = 0.1 * (rand() / (RAND_MAX + 1.0)) / sqrt(LATENT_FACTORS);
+	        }
+	    }
+
+
+	    // Train SVD
+	    cout << "Training model." << endl;
+
+		result = train_model_from_UV(LEARNING_RATE, REGULARIZATION,
+	                                        user_matrix, movie_matrix,
+	                                        date_matrix, rating_matrix,
+	                                        user_matrix_val, movie_matrix_val,
+	                                        date_matrix_val, rating_matrix_val,
+	                                        U, V, y, SumMW,user_matrix_val,
+	                                        movie_matrix_val, date_matrix_val,
+	                                        bu, bi, Bi_Bin, Tu, Alpha_u);
+		if (result.E_val < lowestRMSE) {
+			best_REGULARIZATION_UF   = REGULARIZATION_UF;
+			best_REGULARIZATION_MF   = REGULARIZATION_MF;
+			best_REGULARIZATION_Y    = REGULARIZATION_Y;
+			best_REGULARIZATION_MB   = REGULARIZATION_MB;
+			best_REGULARIZATION_UB   = REGULARIZATION_UB;
+			best_REGULARIZATION_BINS = REGULARIZATION_BINS;
+			best_REGULARIZATION      = REGULARIZATION;
+			lowestRMSE = result.E_val;
+		}
+		outFile << "REGULARIZATION_UF   " << REGULARIZATION_UF << endl;
+		outFile << "REGULARIZATION_MF   " << REGULARIZATION_MF << endl;
+		outFile << "REGULARIZATION_Y    " << REGULARIZATION_Y << endl;
+		outFile << "REGULARIZATION_MB   " << REGULARIZATION_MB << endl;
+		outFile << "REGULARIZATION_UB   " << REGULARIZATION_UB << endl;
+		outFile << "REGULARIZATION_BINS " << REGULARIZATION_BINS << endl;
+		outFile << "REGULARIZATION      " << REGULARIZATION << endl;
+		outFile << "e_val: " << result.E_val << endl;
+		outFile << "----------------------------" << endl << endl;
+
+
+	    for (long r = 0; r < USER_SIZE;  r++) { delete[] U[r]; }
+	    for (long r = 0; r < MOVIE_SIZE; r++) { delete[] V[r]; }
+	    for (long r = 0; r < MOVIE_SIZE; r++) { delete[] y[r]; }
+	    for (long r = 0; r < USER_SIZE;  r++) { delete[] SumMW[r]; }
+	    for (long r = 0; r < MOVIE_SIZE;  r++) { delete[] Bi_Bin[r]; }
+
+	    delete[] bi;
+	    delete[] bu;
+	    delete[] Alpha_u;
+	    delete[] Tu;
+	    delete[] U;
+	    delete[] V;
+	    delete[] y;
+	    delete[] SumMW;
+		delete[] Bi_Bin;
+		}
+		}
+		}
+		}
+		}
 		}
 	}
 	outFile << "BEST PARAMETERS" << endl;

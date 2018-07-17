@@ -2,7 +2,7 @@
 #include <string>
 #include <cmath>
 
-#define RUN_NUMBER 1
+#define RUN_NUMBER 000
 
 #define TRAIN_DATASET_SIZE 94362233
 #define PROBE_DATASET_SIZE 1374739
@@ -11,14 +11,14 @@
 
 #define TRAIN_IN_FILENAME "../dataset1_shuffled_all.dta"
 #define TRAIN_SIZE        TRAIN_DATASET_SIZE
-#define VALID_IN_FILENAME "../probe.dta"
-#define VALID_SIZE        PROBE_DATASET_SIZE
-#define TEST_IN_FILENAME  "../probe.dta"
-#define TEST_SIZE         PROBE_DATASET_SIZE
-// #define TEST_IN_FILENAME  "../dataset5_unshuffled_all.dta"
-// #define TEST_SIZE         TEST_DATASET_SIZE
-// #define VALID_IN_FILENAME "../dataset2_shuffled_all.dta"
-// #define VALID_SIZE        VALID_DATASET_SIZE
+// #define VALID_IN_FILENAME "../probe.dta"
+// #define VALID_SIZE        PROBE_DATASET_SIZE
+// #define TEST_IN_FILENAME  "../probe.dta"
+// #define TEST_SIZE         PROBE_DATASET_SIZE
+#define TEST_IN_FILENAME  "../dataset5_unshuffled_all.dta"
+#define TEST_SIZE         TEST_DATASET_SIZE
+#define VALID_IN_FILENAME "../dataset2_shuffled_all.dta"
+#define VALID_SIZE        VALID_DATASET_SIZE
 
 int    LATENT_FACTORS    = 30;
 double REGULARIZATION_UF = 0.080;
@@ -170,7 +170,6 @@ double predict_score(double** U, double** V, double** SumMW,
     b_u:    bias from the user
     b_i:    bias from the movie
     sqrt_r: (number of movies rated by this user)^-1/2
-
     RETURNS
     prediction for this user and movie combo
     */
@@ -207,11 +206,8 @@ double get_err(double** U, double** V,
     SumMW:      USER_SIZE by LATENT_FACTORS matrix
     user_bias:  bias from the user
     movie_bias: bias from the movie
-
     RETURNS
     The mean squared-error of predictions
-
-
     Compute mean squared error on each data point; include
     regularization penalty in error calculations.
     We first compute the total squared squared error
@@ -328,13 +324,10 @@ svd_ans train_model_from_UV(double eta, double reg,
     Given a training data Y_ij is user i's rating on movie j, learns an
     USER_SIZE x LATENT_FACTORS matrix U and MOVIE_SIZE x LATENT_FACTORS matrix V such that rating Y_ij is approximated
     by (UV)_ij.
-
     y is the second set of latent factors, MOVIE_SIZE by LATENT_FACTORS
-
     Uses an initial learning rate of <eta> and regularization of <reg>. Stops
     after <MAX_EPOCH> epochs, or MSE of validation set stops decreasing.
     Learning rate decreases by 10% every epoch.
-
     Returns a tuple (U, V, err) consisting of U, V, and the unregularized MSE
     of the model.
     */
@@ -488,8 +481,6 @@ svd_ans train_model_from_UV(double eta, double reg,
         // If E_val doesn't decrease, stop early
         if (init_E_val <= E_val) {
             cout<<"E_val is increasing! Printing checkpoint"<<endl;
-            predict( U, V, SumMW, bu, bi,user_matrix_test, movie_matrix_test, date_matrix_test, Bi_Bin, Tu, Alpha_u, epoch);
-            checkpoint_U_V(U, V, epoch);
             break;
         }
         init_E_val = E_val;
@@ -679,6 +670,7 @@ svd_ans complete_training(double eta, double reg) {
     delete[] V;
     delete[] y;
     delete[] SumMW;
+	delete[] Bi_Bin;
 
     return result;
 }
